@@ -18,8 +18,8 @@
 
 ```bash
 # 克隆仓库
-git clone https://github.com/sakisakisa-design/lite-chat-engine.git
-cd lite-chat-engine
+git clone https://github.com/sakisakisa-design/tavern-link.git
+cd tavern-link
 
 # 安装依赖
 npm install
