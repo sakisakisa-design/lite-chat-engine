@@ -42,9 +42,12 @@ function saveConfig(config) {
 const config = loadConfig();
 const logger = new Logger();
 
+// 数据目录（默认为项目根目录下的 data 文件夹）
+const DATA_DIR = config.chat.dataDir || join(ROOT_DIR, 'data');
+
 // 初始化各模块
-const characterManager = new CharacterManager(config.chat.dataDir);
-const worldBookManager = new WorldBookManager(config.chat.dataDir);
+const characterManager = new CharacterManager(DATA_DIR);
+const worldBookManager = new WorldBookManager(DATA_DIR);
 const sessionManager = new SessionManager(config.chat.maxHistoryLength);
 const regexProcessor = new RegexProcessor(config.regex);
 const aiClient = new AIClient(config.ai);
