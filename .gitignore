@@ -6,7 +6,9 @@ config.json
 
 # Data files (user-specific)
 data/characters/
+data/character_overrides/
 data/worldbooks/
+data/worlds/
 data/chats/
 
 # Keep data directory structure
