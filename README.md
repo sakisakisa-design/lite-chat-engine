@@ -1,20 +1,24 @@
-# Lite Chat Engine
+# 🍺 Tavern-Link
 
-一个轻量级的 QQ 聊天引擎，兼容 SillyTavern 的角色卡和世界书格式，通过 OneBot (NapCat) 实现 QQ 聊天。
+**Tavern-Link** 是一个轻量级的 QQ 聊天引擎，兼容 SillyTavern 的角色卡和世界书格式，通过 OneBot (NapCat) 实现 QQ 聊天。
 
-## 功能特性
+> 🎯 **设计理念**：保留 SillyTavern 的核心功能（角色卡、世界书、正则），去除冗余的前端界面，专注于 QQ 机器人场景。
+
+## ✨ 功能特性
 
 - 🎭 **角色卡支持**：兼容 SillyTavern 格式的 PNG 角色卡（读取 tEXt/iTXt 块中的 Base64 JSON）
 - 📚 **世界书支持**：支持关键词触发的世界书条目
 - 🔧 **正则处理**：支持对 AI 回复进行正则替换
 - 💬 **QQ 集成**：通过 OneBot WebSocket 连接 NapCat
 - 🌐 **Web 面板**：简洁的 Web 管理界面
+- 📱 **智能触发**：群聊@触发，私聊自动回复
+- ✂️ **消息分段**：长回复自动分段发送，更自然
 
-## 安装
+## 📦 安装
 
 ```bash
 # 克隆仓库
-git clone https://github.com/YOUR_USERNAME/lite-chat-engine.git
+git clone https://github.com/sakisakisa-design/lite-chat-engine.git
 cd lite-chat-engine
 
 # 安装依赖
@@ -27,85 +31,103 @@ cp config.example.json config.json
 nano config.json
 ```
 
-## 配置说明
+## ⚙️ 配置说明
 
 编辑 `config.json`：
 
 ```json
 {
   "server": {
-    "port": 8001,          // Web 面板端口
-    "host": "0.0.0.0"      // 监听地址
+    "port": 8001,
+    "host": "0.0.0.0"
   },
   "onebot": {
-    "url": "ws://127.0.0.1:3001",  // NapCat WebSocket 地址
-    "accessToken": ""               // 访问令牌（如果有）
+    "url": "ws://127.0.0.1:3001",
+    "accessToken": ""
   },
   "ai": {
-    "baseUrl": "https://api.anthropic.com",  // AI API 地址
-    "apiKey": "your-api-key-here",           // API Key
-    "model": "claude-sonnet-4-20250514",              // 模型名称
-    "maxTokens": 1000,                       // 最大 token 数
-    "temperature": 1                         // 温度参数
+    "baseUrl": "https://api.anthropic.com/v1",
+    "apiKey": "your-api-key-here",
+    "model": "claude-sonnet-4-20250514",
+    "maxTokens": 4096,
+    "temperature": 1
   },
   "chat": {
-    "triggerPrefix": "",    // 触发前缀（留空则所有消息都触发）
-    "historyLimit": 20,     // 历史消息数量限制
-    "allowedGroups": []     // 允许的群号列表（留空则允许所有）
+    "triggerPrefix": "",
+    "historyLimit": 50,
+    "allowedUsers": [],
+    "allowedGroups": [],
+    "splitMessage": true,
+    "defaultCharacter": ""
   },
   "regex": {
-    "enabled": true,        // 是否启用正则处理
-    "rules": []             // 正则规则列表
+    "enabled": true,
+    "rules": []
   }
 }
 ```
 
-## 运行
+### 配置项说明
+
+| 配置项 | 说明 |
+|--------|------|
+| `server.port` | Web 面板端口 |
+| `onebot.url` | NapCat WebSocket 地址 |
+| `ai.baseUrl` | AI API 地址（支持 OpenAI 兼容格式） |
+| `ai.apiKey` | API Key |
+| `ai.model` | 模型名称 |
+| `chat.allowedUsers` | 用户白名单（空数组表示不限制） |
+| `chat.allowedGroups` | 群组白名单（空数组表示不限制） |
+| `chat.splitMessage` | 是否分段发送长消息 |
+| `chat.defaultCharacter` | 默认角色名称 |
+
+## 🚀 运行
 
 ```bash
-node src/index.js
+# 直接运行
+npm start
+
+# 开发模式（自动重载）
+npm run dev
 ```
 
-然后访问 `http://localhost:8001` 打开 Web 管理面板。
-
-## 使用方法
-
-1. **上传角色卡**：在 Web 面板中上传 SillyTavern 格式的 PNG 角色卡
-2. **配置世界书**：上传或创建世界书条目
-3. **连接 QQ**：确保 NapCat 正在运行并配置正确的 WebSocket 地址
-4. **开始聊天**：在 QQ 中发送消息即可与 AI 角色对话
-
-## 项目结构
+## 📁 数据目录结构
 
 ```
-lite-chat-engine/
-├── src/
-│   ├── index.js           # 主入口
-│   ├── server.js          # Express 服务器
-│   ├── onebot.js          # OneBot WebSocket 连接
-│   ├── ai.js              # AI API 调用
-│   ├── prompt.js          # Prompt 组装逻辑
-│   ├── characterParser.js # 角色卡解析
-│   ├── worldbook.js       # 世界书处理
-│   └── regex.js           # 正则处理
-├── public/
-│   └── index.html         # Web 面板
-├── data/
-│   ├── characters/        # 角色卡存储
-│   ├── worldbooks/        # 世界书存储
-│   └── chats/             # 聊天记录
-├── config.json            # 配置文件（不上传）
-├── config.example.json    # 配置示例
-└── package.json
+data/
+├── characters/     # 角色卡 (.png)
+└── worldbooks/     # 世界书 (.json)
 ```
 
-## 依赖
+## 🎭 角色卡格式
 
-- Node.js >= 18
-- express
-- ws
-- pngjs
+支持 SillyTavern 格式的 PNG 角色卡，角色数据存储在图片的 tEXt 或 iTXt 块中。
 
-## License
+## 📚 世界书格式
 
-MIT
+支持 SillyTavern 格式的世界书 JSON 文件，包含关键词触发的条目。
+
+## 🔧 正则规则
+
+可以在 Web 面板中配置正则规则，对 AI 回复进行处理。
+
+## 📝 触发规则
+
+- **群聊**：必须 @机器人 才会回复
+- **私聊**：默认自动回复所有消息
+
+## 🛠️ 技术栈
+
+- **后端**：Node.js + Express
+- **WebSocket**：ws 库
+- **OneBot**：NapCat 协议
+- **前端**：原生 HTML/CSS/JS
+
+## 📄 License
+
+MIT License
+
+## 🙏 致谢
+
+- [SillyTavern](https://github.com/SillyTavern/SillyTavern) - 角色卡和世界书格式参考
+- [NapCat](https://github.com/NapNeko/NapCatQQ) - QQ OneBot 实现

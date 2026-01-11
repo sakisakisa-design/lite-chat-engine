@@ -1,7 +1,7 @@
 {
-  "name": "lite-chat-engine",
+  "name": "tavern-link",
   "version": "1.0.0",
-  "description": "轻量级 QQ 聊天引擎 - 兼容 SillyTavern 数据格式",
+  "description": "Tavern-Link - 轻量级 QQ 聊天引擎，兼容 SillyTavern 数据格式",
   "main": "src/index.js",
   "type": "module",
   "scripts": {

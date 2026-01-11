@@ -107,7 +107,7 @@ async function handleMessage(event, bot) {
     text = text.trim();
     
     // 检查触发条件
-    const triggerMode = config.chat.triggerMode;
+    const triggerMode = config.chat.triggerMode || 'always';
     let shouldRespond = false;
     
     if (message_type === 'group') {
@@ -116,13 +116,12 @@ async function handleMessage(event, bot) {
             shouldRespond = true;
         }
     } else {
-        // 私聊：根据 triggerMode 判断
-        if (triggerMode === 'always') {
-            shouldRespond = true;
-        } else if (triggerMode === 'at' && isAtMe) {
+        // 私聊：默认总是回复，除非配置了特定触发模式
+        if (triggerMode === 'always' || !triggerMode) {
             shouldRespond = true;
         } else if (triggerMode === 'keyword') {
-            for (const kw of config.chat.triggerKeywords) {
+            const keywords = config.chat.triggerKeywords || [];
+            for (const kw of keywords) {
                 if (text.includes(kw)) {
                     shouldRespond = true;
                     break;
@@ -132,13 +131,16 @@ async function handleMessage(event, bot) {
     }
     
     // 检查白名单
-    if (config.chat.allowedGroups.length > 0 && message_type === 'group') {
-        if (!config.chat.allowedGroups.includes(group_id)) {
+    const allowedGroups = config.chat.allowedGroups || [];
+    const allowedUsers = config.chat.allowedUsers || [];
+    
+    if (allowedGroups.length > 0 && message_type === 'group') {
+        if (!allowedGroups.includes(group_id)) {
             shouldRespond = false;
         }
     }
-    if (config.chat.allowedUsers.length > 0) {
-        if (!config.chat.allowedUsers.includes(user_id)) {
+    if (allowedUsers.length > 0) {
+        if (!allowedUsers.includes(user_id)) {
             shouldRespond = false;
         }
     }
@@ -221,5 +223,16 @@ bot.on('disconnected', () => {
 // 启动服务器
 server.listen(config.server.port, config.server.host, () => {
     logger.info(`服务器已启动: http://${config.server.host}:${config.server.port}`);
+    
+    // 自动加载默认角色
+    if (config.chat.defaultCharacter) {
+        try {
+            characterManager.loadCharacter(config.chat.defaultCharacter);
+            logger.info(`已加载默认角色: ${config.chat.defaultCharacter}`);
+        } catch (error) {
+            logger.warn(`加载默认角色失败: ${error.message}`);
+        }
+    }
+    
     bot.connect();
 });

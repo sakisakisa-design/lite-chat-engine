@@ -23,6 +23,7 @@ Thumbs.db
 .idea/
 
 # Logs
+logs/
 *.log
 npm-debug.log*
 

@@ -138,6 +138,12 @@ export function setupRoutes(app, deps) {
             // 移除 .png 扩展名
             const characterName = filename.replace(/\.png$/i, '');
             const character = characterManager.loadCharacter(characterName);
+            
+            // 更新配置并保存，确保重启后仍然使用选择的角色
+            config.chat.defaultCharacter = characterName;
+            saveConfig(config);
+            
+            logger.info(`已选择角色: ${characterName}`);
             res.json({ success: true, character });
         } catch (error) {
             logger.error('选择角色失败', error);
