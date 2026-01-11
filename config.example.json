@@ -1,0 +1,26 @@
+{
+  "server": {
+    "port": 8001,
+    "host": "0.0.0.0"
+  },
+  "onebot": {
+    "url": "ws://127.0.0.1:3001",
+    "accessToken": ""
+  },
+  "ai": {
+    "baseUrl": "https://api.anthropic.com",
+    "apiKey": "your-api-key-here",
+    "model": "claude-sonnet-4-20250514",
+    "maxTokens": 1000,
+    "temperature": 1
+  },
+  "chat": {
+    "triggerPrefix": "",
+    "historyLimit": 20,
+    "allowedGroups": []
+  },
+  "regex": {
+    "enabled": true,
+    "rules": []
+  }
+}

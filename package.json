@@ -1,0 +1,24 @@
+{
+  "name": "lite-chat-engine",
+  "version": "1.0.0",
+  "description": "轻量级 QQ 聊天引擎 - 兼容 SillyTavern 数据格式",
+  "main": "src/index.js",
+  "type": "module",
+  "scripts": {
+    "start": "node src/index.js",
+    "dev": "node --watch src/index.js"
+  },
+  "keywords": [
+    "chatbot",
+    "qq",
+    "sillytavern",
+    "onebot"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "express": "^4.18.2",
+    "multer": "^2.0.2",
+    "ws": "^8.16.0"
+  }
+}

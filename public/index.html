@@ -1,0 +1,1688 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lite Chat Engine - 控制面板</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --bg-primary: #fff5f5;
+            --bg-secondary: #ffe4e6;
+            --bg-card: #fecdd3;
+            --text-primary: #4a4a4a;
+            --text-secondary: #9ca3af;
+            --accent: #f472b6;
+            --accent-hover: #ec4899;
+            --success: #86efac;
+            --warning: #fcd34d;
+            --error: #fca5a5;
+            --border: #fda4af;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 20px 0;
+            border-bottom: 1px solid var(--border);
+            margin-bottom: 30px;
+        }
+
+        header h1 {
+            font-size: 1.8rem;
+            color: var(--accent);
+        }
+
+        .status-bar {
+            display: flex;
+            gap: 20px;
+            align-items: center;
+        }
+
+        .status-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.9rem;
+        }
+
+        .status-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: var(--error);
+        }
+
+        .status-dot.connected {
+            background: var(--success);
+        }
+
+        .tabs {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+
+        .tab {
+            padding: 10px 20px;
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .tab:hover {
+            background: var(--bg-card);
+        }
+
+        .tab.active {
+            background: var(--accent);
+            border-color: var(--accent);
+        }
+
+        .panel {
+            display: none;
+            background: var(--bg-secondary);
+            border-radius: 12px;
+            padding: 25px;
+            border: 1px solid var(--border);
+        }
+
+        .panel.active {
+            display: block;
+        }
+
+        .panel h2 {
+            margin-bottom: 20px;
+            color: var(--accent);
+            font-size: 1.4rem;
+        }
+
+        .card {
+            background: var(--bg-card);
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 15px;
+        }
+
+        .card h3 {
+            margin-bottom: 15px;
+            font-size: 1.1rem;
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+        }
+
+        input, select, textarea {
+            width: 100%;
+            padding: 10px 15px;
+            background: var(--bg-primary);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            color: var(--text-primary);
+            font-size: 0.95rem;
+        }
+
+        input:focus, select:focus, textarea:focus {
+            outline: none;
+            border-color: var(--accent);
+        }
+
+        textarea {
+            min-height: 100px;
+            resize: vertical;
+        }
+
+        button {
+            padding: 10px 20px;
+            background: var(--accent);
+            border: none;
+            border-radius: 6px;
+            color: white;
+            cursor: pointer;
+            font-size: 0.95rem;
+            transition: background 0.3s;
+        }
+
+        button:hover {
+            background: var(--accent-hover);
+        }
+
+        button.secondary {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+        }
+
+        button.secondary:hover {
+            background: var(--border);
+        }
+
+        button.success {
+            background: var(--success);
+        }
+
+        button.danger {
+            background: var(--error);
+        }
+
+        .btn-group {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .list {
+            max-height: 300px;
+            overflow-y: auto;
+        }
+
+        .list-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 15px;
+            background: var(--bg-primary);
+            border-radius: 6px;
+            margin-bottom: 8px;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+
+        .list-item:hover {
+            background: var(--border);
+        }
+
+        .list-item.selected {
+            border-left: 3px solid var(--accent);
+        }
+
+        .list-item .name {
+            font-weight: 500;
+        }
+
+        .list-item .meta {
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+        }
+
+        .log-container {
+            background: var(--bg-primary);
+            border-radius: 8px;
+            padding: 15px;
+            max-height: 400px;
+            overflow-y: auto;
+            font-family: 'Consolas', 'Monaco', monospace;
+            font-size: 0.85rem;
+        }
+
+        .log-entry {
+            padding: 5px 0;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .log-entry.info { color: var(--text-primary); }
+        .log-entry.warn { color: var(--warning); }
+        .log-entry.error { color: var(--error); }
+        .log-entry.debug { color: var(--text-secondary); }
+
+        .log-time {
+            color: var(--text-secondary);
+            margin-right: 10px;
+        }
+
+        .session-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 15px;
+            background: var(--bg-primary);
+            border-radius: 8px;
+            margin-bottom: 10px;
+        }
+
+        .session-info {
+            flex: 1;
+        }
+
+        .session-id {
+            font-weight: 500;
+            margin-bottom: 5px;
+        }
+
+        .session-meta {
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+        }
+
+        .message-list {
+            max-height: 400px;
+            overflow-y: auto;
+        }
+
+        .message {
+            padding: 10px 15px;
+            margin-bottom: 10px;
+            border-radius: 8px;
+        }
+
+        .message.user {
+            background: var(--bg-card);
+            margin-left: 20%;
+        }
+
+        .message.assistant {
+            background: var(--bg-primary);
+            margin-right: 20%;
+        }
+
+        .message-role {
+            font-size: 0.8rem;
+            color: var(--accent);
+            margin-bottom: 5px;
+        }
+
+        .regex-rule {
+            background: var(--bg-primary);
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 10px;
+        }
+
+        .regex-rule .pattern {
+            font-family: monospace;
+            background: var(--bg-card);
+            padding: 5px 10px;
+            border-radius: 4px;
+            margin: 5px 0;
+        }
+
+        .toast {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            padding: 15px 25px;
+            background: var(--bg-card);
+            border-radius: 8px;
+            border-left: 4px solid var(--success);
+            animation: slideIn 0.3s ease;
+            z-index: 1000;
+        }
+
+        .toast.error {
+            border-left-color: var(--error);
+        }
+
+        @keyframes slideIn {
+            from {
+                transform: translateX(100%);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 40px;
+            color: var(--text-secondary);
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 3px 8px;
+            background: var(--accent);
+            border-radius: 4px;
+            font-size: 0.75rem;
+            margin-left: 8px;
+        }
+
+        .badge.success { background: var(--success); }
+        .badge.warning { background: var(--warning); color: #000; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🤖 Lite Chat Engine</h1>
+            <div class="status-bar">
+                <div class="status-item">
+                    <span class="status-dot" id="onebot-status"></span>
+                    <span>OneBot</span>
+                </div>
+                <div class="status-item">
+                    <span id="current-character">未选择角色</span>
+                </div>
+            </div>
+        </header>
+
+        <div class="tabs">
+            <div class="tab active" data-panel="dashboard">📊 仪表盘</div>
+            <div class="tab" data-panel="characters">👤 角色卡</div>
+            <div class="tab" data-panel="worldbooks">📚 世界书</div>
+            <div class="tab" data-panel="sessions">💬 会话</div>
+            <div class="tab" data-panel="regex">🔧 正则规则</div>
+            <div class="tab" data-panel="config">⚙️ 配置</div>
+            <div class="tab" data-panel="logs">📝 日志</div>
+        </div>
+
+        <!-- 仪表盘 -->
+        <div class="panel active" id="dashboard">
+            <h2>系统状态</h2>
+            <div class="grid">
+                <div class="card">
+                    <h3>连接状态</h3>
+                    <div class="status-item" style="margin-bottom: 10px;">
+                        <span class="status-dot" id="onebot-status-2"></span>
+                        <span>OneBot 连接</span>
+                    </div>
+                    <button onclick="reconnectOneBot()">重新连接</button>
+                </div>
+                <div class="card">
+                    <h3>当前配置</h3>
+                    <p style="margin-bottom: 8px;">角色: <strong id="dash-character">-</strong></p>
+                    <p style="margin-bottom: 8px;">世界书: <strong id="dash-worldbook">-</strong></p>
+                    <p>活跃会话: <strong id="dash-sessions">0</strong></p>
+                </div>
+                <div class="card">
+                    <h3>快速测试</h3>
+                    <div class="form-group">
+                        <input type="text" id="test-message" placeholder="输入测试消息...">
+                    </div>
+                    <button onclick="testAI()">测试 AI</button>
+                    <div id="test-result" style="margin-top: 15px; padding: 10px; background: var(--bg-primary); border-radius: 6px; display: none;"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 角色卡 -->
+        <div class="panel" id="characters">
+            <h2>角色卡管理</h2>
+            <div class="btn-group" style="margin-bottom: 20px;">
+                <button onclick="refreshCharacters()">🔄 刷新列表</button>
+                <label class="upload-btn" style="padding: 10px 20px; background: #1a1a1a; border: none; border-radius: 6px; color: white; cursor: pointer; font-size: 0.95rem;">
+                    📤 上传角色卡 (PNG)
+                    <input type="file" accept=".png" onchange="uploadCharacter(this)" style="display: none;">
+                </label>
+            </div>
+            <p style="color: var(--text-secondary); margin-bottom: 15px; font-size: 0.9rem;">
+                💡 支持 SillyTavern 格式的角色卡 PNG 文件（包含 tEXt/iTXt 块的角色数据）
+            </p>
+            <div class="grid">
+                <div class="card" style="max-width: 350px;">
+                    <h3>角色列表</h3>
+                    <div class="list" id="character-list">
+                        <div class="empty-state">加载中...</div>
+                    </div>
+                </div>
+                <div class="card" style="flex: 1; min-width: 500px;">
+                    <h3>角色详情 <span id="char-edit-status" style="font-size: 0.8rem; color: var(--text-secondary);"></span></h3>
+                    <div id="character-detail">
+                        <div class="empty-state">选择一个角色查看详情</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 世界书 -->
+        <div class="panel" id="worldbooks">
+            <h2>世界书管理</h2>
+            <div class="btn-group" style="margin-bottom: 20px;">
+                <button onclick="refreshWorldBooks()">🔄 刷新列表</button>
+                <label class="upload-btn" style="padding: 10px 20px; background: #1a1a1a; border: none; border-radius: 6px; color: white; cursor: pointer; font-size: 0.95rem;">
+                    📤 上传世界书 (JSON)
+                    <input type="file" accept=".json" onchange="uploadWorldBook(this)" style="display: none;">
+                </label>
+            </div>
+            <p style="color: var(--text-secondary); margin-bottom: 15px; font-size: 0.9rem;">
+                💡 支持 SillyTavern 格式的世界书 JSON 文件（WorldInfo 格式）
+            </p>
+            <div class="grid">
+                <div class="card">
+                    <h3>世界书列表</h3>
+                    <div class="list" id="worldbook-list">
+                        <div class="empty-state">加载中...</div>
+                    </div>
+                </div>
+                <div class="card" style="flex: 1; min-width: 500px;">
+                    <h3>世界书条目编辑器</h3>
+                    <div id="worldbook-editor">
+                        <div class="empty-state">选择一个世界书查看和编辑条目</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 会话 -->
+        <div class="panel" id="sessions">
+            <h2>会话管理</h2>
+            <div class="grid">
+                <div class="card">
+                    <h3>活跃会话</h3>
+                    <div id="session-list">
+                        <div class="empty-state">暂无会话</div>
+                    </div>
+                </div>
+                <div class="card">
+                    <h3>会话历史</h3>
+                    <div id="session-history">
+                        <div class="empty-state">选择一个会话查看历史</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 正则规则 -->
+        <div class="panel" id="regex">
+            <h2>正则规则</h2>
+            <div class="grid">
+                <div class="card">
+                    <h3>规则列表</h3>
+                    <div id="regex-list">
+                        <div class="empty-state">加载中...</div>
+                    </div>
+                </div>
+                <div class="card">
+                    <h3>添加规则</h3>
+                    <div class="form-group">
+                        <label>规则名称</label>
+                        <input type="text" id="regex-name" placeholder="例如: 移除思考标签">
+                    </div>
+                    <div class="form-group">
+                        <label>正则表达式</label>
+                        <input type="text" id="regex-pattern" placeholder="例如: <thinking>[\s\S]*?</thinking>">
+                    </div>
+                    <div class="form-group">
+                        <label>标志</label>
+                        <input type="text" id="regex-flags" placeholder="例如: gi" value="g">
+                    </div>
+                    <div class="form-group">
+                        <label>替换为</label>
+                        <input type="text" id="regex-replacement" placeholder="留空表示删除">
+                    </div>
+                    <div class="form-group">
+                        <label>处理阶段</label>
+                        <select id="regex-stage">
+                            <option value="output">输出 (AI 回复)</option>
+                            <option value="input">输入 (用户消息)</option>
+                        </select>
+                    </div>
+                    <div class="btn-group">
+                        <button onclick="addRegexRule()">添加规则</button>
+                        <button class="secondary" onclick="testRegex()">测试规则</button>
+                    </div>
+                    <div class="form-group" style="margin-top: 15px;">
+                        <label>测试文本</label>
+                        <textarea id="regex-test-text" placeholder="输入要测试的文本..."></textarea>
+                    </div>
+                    <div id="regex-test-result" style="margin-top: 10px;"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 配置 -->
+        <div class="panel" id="config">
+            <h2>系统配置</h2>
+            <div class="grid">
+                <div class="card">
+                    <h3>OneBot 连接</h3>
+                    <div class="form-group">
+                        <label>WebSocket URL</label>
+                        <input type="text" id="config-onebot-url" placeholder="ws://127.0.0.1:3001">
+                    </div>
+                    <div class="form-group">
+                        <label>Access Token (可选)</label>
+                        <input type="password" id="config-onebot-token" placeholder="留空表示无需认证">
+                    </div>
+                </div>
+                <div class="card">
+                    <h3>AI 配置</h3>
+                    <div class="form-group">
+                        <label>API Base URL</label>
+                        <input type="text" id="config-ai-baseurl" placeholder="https://api.openai.com/v1">
+                    </div>
+                    <div class="form-group">
+                        <label>API Key</label>
+                        <input type="password" id="config-ai-apikey" placeholder="sk-...">
+                    </div>
+                    <div class="form-group">
+                        <label>模型</label>
+                        <input type="text" id="config-ai-model" placeholder="gpt-4">
+                    </div>
+                    <div class="form-group">
+                        <label>最大 Tokens</label>
+                        <input type="number" id="config-ai-maxtokens" placeholder="4096">
+                    </div>
+                    <div class="form-group">
+                        <label>Temperature</label>
+                        <input type="number" id="config-ai-temperature" step="0.1" min="0" max="2" placeholder="0.7">
+                    </div>
+                </div>
+                <div class="card">
+                    <h3>聊天设置</h3>
+                    <div class="form-group">
+                        <label>触发前缀 (留空表示所有消息)</label>
+                        <input type="text" id="config-chat-trigger" placeholder="例如: /chat">
+                    </div>
+                    <div class="form-group">
+                        <label>历史消息数量</label>
+                        <input type="number" id="config-chat-history" placeholder="20">
+                    </div>
+                    <div class="form-group">
+                        <label>允许的群号 (逗号分隔，留空表示全部)</label>
+                        <input type="text" id="config-chat-groups" placeholder="123456,789012">
+                    </div>
+                </div>
+            </div>
+            <div style="margin-top: 20px;">
+                <button class="success" onclick="saveConfig()">💾 保存配置</button>
+            </div>
+        </div>
+
+        <!-- 日志 -->
+        <div class="panel" id="logs">
+            <h2>实时日志</h2>
+            <div class="btn-group" style="margin-bottom: 15px;">
+                <button onclick="clearLogs()">清空日志</button>
+                <button class="secondary" onclick="refreshLogs()">刷新</button>
+            </div>
+            <div class="log-container" id="log-container">
+                <div class="empty-state">等待日志...</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 全局状态
+        let currentConfig = {};
+        let selectedSession = null;
+
+        // 初始化
+        document.addEventListener('DOMContentLoaded', () => {
+            initTabs();
+            loadStatus();
+            loadCharacters();
+            loadWorldBooks();
+            loadSessions();
+            loadRegexRules();
+            loadConfig();
+            connectLogWebSocket();
+            
+            // 定时刷新状态
+            setInterval(loadStatus, 10000);
+        });
+
+        // 标签页切换
+        function initTabs() {
+            document.querySelectorAll('.tab').forEach(tab => {
+                tab.addEventListener('click', () => {
+                    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+                    document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+                    tab.classList.add('active');
+                    document.getElementById(tab.dataset.panel).classList.add('active');
+                });
+            });
+        }
+
+        // 加载状态
+        async function loadStatus() {
+            try {
+                const res = await fetch('/api/status');
+                const data = await res.json();
+                
+                const connected = data.onebot.connected;
+                document.getElementById('onebot-status').classList.toggle('connected', connected);
+                document.getElementById('onebot-status-2').classList.toggle('connected', connected);
+                document.getElementById('current-character').textContent = data.character || '未选择角色';
+                document.getElementById('dash-character').textContent = data.character || '-';
+                document.getElementById('dash-worldbook').textContent = data.worldbook || '-';
+                document.getElementById('dash-sessions').textContent = data.sessions;
+            } catch (e) {
+                console.error('加载状态失败', e);
+            }
+        }
+
+        // 角色卡
+        async function loadCharacters() {
+            try {
+                const res = await fetch('/api/characters');
+                const characters = await res.json();
+                
+                const list = document.getElementById('character-list');
+                if (characters.length === 0) {
+                    list.innerHTML = '<div class="empty-state">暂无角色卡</div>';
+                    return;
+                }
+                
+                list.innerHTML = characters.map(c => `
+                    <div class="list-item" onclick="selectCharacter('${c.filename}')">
+                        <div>
+                            <div class="name">${c.name}</div>
+                            <div class="meta">${c.filename}</div>
+                        </div>
+                        <button class="danger" onclick="event.stopPropagation(); deleteCharacter('${c.filename}')" style="padding: 5px 10px;">删除</button>
+                    </div>
+                `).join('');
+            } catch (e) {
+                console.error('加载角色列表失败', e);
+            }
+        }
+
+        // 当前选中的角色数据
+        let currentCharacterData = null;
+        let currentCharacterFilename = null;
+
+        async function selectCharacter(filename) {
+            try {
+                const res = await fetch('/api/characters/select', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ filename })
+                });
+                const data = await res.json();
+                
+                if (data.success) {
+                    showToast('角色已选择');
+                    loadStatus();
+                    
+                    currentCharacterData = data.character;
+                    currentCharacterFilename = filename;
+                    renderCharacterDetail(data.character, filename);
+                }
+            } catch (e) {
+                showToast('选择角色失败', true);
+            }
+        }
+
+        function renderCharacterDetail(char, filename) {
+            const detail = document.getElementById('character-detail');
+            const hasWorldBook = char.data?.character_book || char.character_book;
+            const worldBookEntries = hasWorldBook ? (char.data?.character_book?.entries || char.character_book?.entries || []).length : 0;
+            
+            detail.innerHTML = `
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                    <span style="font-size: 1.2rem; font-weight: bold;">${char.name || '未命名'}</span>
+                    <div class="btn-group">
+                        ${hasWorldBook ? `<button onclick="extractWorldBook()" style="padding: 5px 10px; background: #1a1a1a; color: white;">📚 提取世界书 (${worldBookEntries}条)</button>` : ''}
+                        <button onclick="saveCharacter()" style="padding: 5px 10px; background: #1a1a1a; color: white;">💾 保存</button>
+                    </div>
+                </div>
+                
+                <div style="display: grid; gap: 15px; max-height: 500px; overflow-y: auto;">
+                    <!-- 基本信息 -->
+                    <div class="form-group">
+                        <label>📝 角色名称</label>
+                        <input type="text" id="char-name" value="${escapeHtml(char.name || '')}" placeholder="角色名称">
+                    </div>
+                    
+                    <!-- 主要提示词 (System Prompt) -->
+                    <div class="form-group">
+                        <label>🎯 主要提示词 (System Prompt)</label>
+                        <textarea id="char-system-prompt" rows="4" placeholder="系统提示词，定义AI的行为方式...">${escapeHtml(char.system_prompt || char.data?.system_prompt || '')}</textarea>
+                    </div>
+                    
+                    <!-- 角色描述 -->
+                    <div class="form-group">
+                        <label>📖 角色描述 (Description)</label>
+                        <textarea id="char-description" rows="4" placeholder="角色的详细描述...">${escapeHtml(char.description || char.data?.description || '')}</textarea>
+                    </div>
+                    
+                    <!-- 人设/性格 -->
+                    <div class="form-group">
+                        <label>💫 人设/性格 (Personality)</label>
+                        <textarea id="char-personality" rows="3" placeholder="角色的性格特点...">${escapeHtml(char.personality || char.data?.personality || '')}</textarea>
+                    </div>
+                    
+                    <!-- 情景 -->
+                    <div class="form-group">
+                        <label>🎬 情景 (Scenario)</label>
+                        <textarea id="char-scenario" rows="3" placeholder="对话发生的场景...">${escapeHtml(char.scenario || char.data?.scenario || '')}</textarea>
+                    </div>
+                    
+                    <!-- 第一条消息 -->
+                    <div class="form-group">
+                        <label>👋 第一条消息 (First Message)</label>
+                        <textarea id="char-first-mes" rows="3" placeholder="角色的开场白...">${escapeHtml(char.first_mes || char.data?.first_mes || '')}</textarea>
+                    </div>
+                    
+                    <!-- 对话示例 -->
+                    <div class="form-group">
+                        <label>💬 对话示例 (Example Dialogue)</label>
+                        <textarea id="char-mes-example" rows="4" placeholder="示例对话，格式如: <START>\\n{{user}}: 你好\\n{{char}}: 你好呀！">${escapeHtml(char.mes_example || char.data?.mes_example || '')}</textarea>
+                    </div>
+                    
+                    <!-- 后续历史指令 -->
+                    <div class="form-group">
+                        <label>📌 后续历史指令 (Post History Instructions)</label>
+                        <textarea id="char-post-history" rows="3" placeholder="在聊天历史之后插入的指令...">${escapeHtml(char.post_history_instructions || char.data?.post_history_instructions || '')}</textarea>
+                    </div>
+                    
+                    <!-- 创作者备注 -->
+                    <div class="form-group">
+                        <label>📝 创作者备注</label>
+                        <textarea id="char-creator-notes" rows="2" placeholder="给使用者的说明...">${escapeHtml(char.creator_notes || char.data?.creator_notes || '')}</textarea>
+                    </div>
+                </div>
+            `;
+        }
+
+        function escapeHtml(text) {
+            if (!text) return '';
+            return text
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#039;');
+        }
+
+        async function saveCharacter() {
+            if (!currentCharacterFilename) {
+                showToast('请先选择一个角色', true);
+                return;
+            }
+            
+            const updatedData = {
+                name: document.getElementById('char-name').value,
+                system_prompt: document.getElementById('char-system-prompt').value,
+                description: document.getElementById('char-description').value,
+                personality: document.getElementById('char-personality').value,
+                scenario: document.getElementById('char-scenario').value,
+                first_mes: document.getElementById('char-first-mes').value,
+                mes_example: document.getElementById('char-mes-example').value,
+                post_history_instructions: document.getElementById('char-post-history').value,
+                creator_notes: document.getElementById('char-creator-notes').value
+            };
+            
+            try {
+                const res = await fetch(`/api/characters/${encodeURIComponent(currentCharacterFilename)}/update`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(updatedData)
+                });
+                const data = await res.json();
+                
+                if (data.success) {
+                    showToast('角色已保存');
+                    // 更新当前数据
+                    Object.assign(currentCharacterData, updatedData);
+                    if (currentCharacterData.data) {
+                        Object.assign(currentCharacterData.data, updatedData);
+                    }
+                    loadStatus();
+                } else {
+                    showToast('保存失败: ' + data.error, true);
+                }
+            } catch (e) {
+                showToast('保存失败', true);
+            }
+        }
+
+        async function extractWorldBook() {
+            if (!currentCharacterData) {
+                showToast('请先选择一个角色', true);
+                return;
+            }
+            
+            if (!currentCharacterFilename) {
+                showToast('角色文件名未知', true);
+                return;
+            }
+            
+            const worldBook = currentCharacterData.data?.character_book || currentCharacterData.character_book;
+            if (!worldBook) {
+                showToast('此角色卡没有内嵌世界书', true);
+                return;
+            }
+            
+            try {
+                const res = await fetch('/api/worldbooks/extract-from-character', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ 
+                        filename: currentCharacterFilename
+                    })
+                });
+                const data = await res.json();
+                
+                if (data.success) {
+                    showToast(`世界书已提取: ${data.filename}`);
+                    loadWorldBooks();
+                } else {
+                    showToast('提取失败: ' + data.error, true);
+                }
+            } catch (e) {
+                showToast('提取失败', true);
+            }
+        }
+
+        async function refreshCharacters() {
+            try {
+                await fetch('/api/characters/refresh', { method: 'POST' });
+                loadCharacters();
+                showToast('角色列表已刷新');
+            } catch (e) {
+                showToast('刷新失败', true);
+            }
+        }
+
+        // 上传角色卡
+        async function uploadCharacter(input) {
+            const file = input.files[0];
+            if (!file) return;
+            
+            const formData = new FormData();
+            formData.append('file', file);
+            
+            try {
+                const res = await fetch('/api/characters/upload', {
+                    method: 'POST',
+                    body: formData
+                });
+                const data = await res.json();
+                
+                if (data.success) {
+                    showToast(`角色卡 "${data.filename}" 上传成功`);
+                    loadCharacters();
+                } else {
+                    showToast('上传失败: ' + data.error, true);
+                }
+            } catch (e) {
+                showToast('上传失败', true);
+            }
+            input.value = ''; // 清空选择
+        }
+
+        // 删除角色卡
+        async function deleteCharacter(filename) {
+            if (!confirm(`确定要删除角色卡 "${filename}" 吗？`)) return;
+            
+            try {
+                const res = await fetch(`/api/characters/${encodeURIComponent(filename)}`, { method: 'DELETE' });
+                const data = await res.json();
+                
+                if (data.success) {
+                    showToast('角色卡已删除');
+                    loadCharacters();
+                } else {
+                    showToast('删除失败: ' + data.error, true);
+                }
+            } catch (e) {
+                showToast('删除失败', true);
+            }
+        }
+
+        // 世界书
+        async function loadWorldBooks() {
+            try {
+                const res = await fetch('/api/worldbooks');
+                const worldbooks = await res.json();
+                
+                const list = document.getElementById('worldbook-list');
+                if (worldbooks.length === 0) {
+                    list.innerHTML = '<div class="empty-state">暂无世界书</div>';
+                    return;
+                }
+                
+                // API 返回的是文件名数组（字符串）
+                list.innerHTML = worldbooks.map(filename => `
+                    <div class="list-item" onclick="selectWorldBook('${filename}')">
+                        <div>
+                            <div class="name">${filename.replace('.json', '')}</div>
+                            <div class="meta">${filename}</div>
+                        </div>
+                        <button class="danger" onclick="event.stopPropagation(); deleteWorldBook('${filename}')" style="padding: 5px 10px;">删除</button>
+                    </div>
+                `).join('');
+            } catch (e) {
+                console.error('加载世界书列表失败', e);
+            }
+        }
+
+        // 当前选中的世界书数据
+        let currentWorldBookData = null;
+        let currentWorldBookFilename = null;
+        let currentEditingEntryIndex = null;
+
+        async function selectWorldBook(filename) {
+            try {
+                const res = await fetch('/api/worldbooks/select', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ filename })
+                });
+                const data = await res.json();
+                
+                if (data.success) {
+                    showToast('世界书已加载');
+                    loadStatus();
+                    
+                    // 加载世界书内容用于编辑
+                    currentWorldBookFilename = filename;
+                    await loadWorldBookContent(filename);
+                }
+            } catch (e) {
+                showToast('加载世界书失败', true);
+            }
+        }
+
+        async function loadWorldBookContent(filename) {
+            try {
+                const res = await fetch(`/api/worldbooks/${encodeURIComponent(filename)}/content`);
+                const data = await res.json();
+                
+                if (data.success) {
+                    currentWorldBookData = data.worldbook;
+                    renderWorldBookEditor();
+                } else {
+                    showToast('加载世界书内容失败: ' + data.error, true);
+                }
+            } catch (e) {
+                showToast('加载世界书内容失败', true);
+            }
+        }
+
+        function renderWorldBookEditor() {
+            const editor = document.getElementById('worldbook-editor');
+            if (!currentWorldBookData) {
+                editor.innerHTML = '<div class="empty-state">选择一个世界书查看和编辑条目</div>';
+                return;
+            }
+
+            // 获取条目列表（支持数组格式和对象格式）
+            let entries = [];
+            if (Array.isArray(currentWorldBookData.entries)) {
+                entries = currentWorldBookData.entries;
+            } else if (currentWorldBookData.entries && typeof currentWorldBookData.entries === 'object') {
+                entries = Object.values(currentWorldBookData.entries);
+            }
+
+            editor.innerHTML = `
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                    <span style="font-size: 1rem; font-weight: bold;">${currentWorldBookFilename.replace('.json', '')} (${entries.length} 条目)</span>
+                    <div class="btn-group">
+                        <button onclick="addNewEntry()" style="padding: 5px 10px; background: #1a1a1a; color: white;">➕ 新增条目</button>
+                        <button onclick="saveWorldBook()" style="padding: 5px 10px; background: #1a1a1a; color: white;">💾 保存世界书</button>
+                    </div>
+                </div>
+                
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+                    <!-- 条目列表 -->
+                    <div style="max-height: 450px; overflow-y: auto;">
+                        <div style="font-size: 0.9rem; color: var(--text-secondary); margin-bottom: 10px;">条目列表</div>
+                        ${entries.length === 0 ? '<div class="empty-state" style="padding: 20px;">暂无条目</div>' : 
+                            entries.map((entry, index) => `
+                                <div class="list-item ${currentEditingEntryIndex === index ? 'selected' : ''}" 
+                                     onclick="editEntry(${index})" 
+                                     style="margin-bottom: 8px;">
+                                    <div style="flex: 1;">
+                                        <div class="name">${escapeHtml(entry.comment || entry.name || '未命名条目')}</div>
+                                        <div class="meta">
+                                            ${entry.constant ? '🔒 常驻' : '🔑 关键词触发'}
+                                            ${entry.enabled === false ? ' | ❌ 已禁用' : ''}
+                                        </div>
+                                        <div class="meta" style="font-size: 0.8rem;">
+                                            关键词: ${(entry.keys || entry.key || []).slice(0, 3).join(', ')}${(entry.keys || entry.key || []).length > 3 ? '...' : ''}
+                                        </div>
+                                    </div>
+                                    <button class="danger" onclick="event.stopPropagation(); deleteEntry(${index})" style="padding: 3px 8px; font-size: 0.8rem;">删除</button>
+                                </div>
+                            `).join('')
+                        }
+                    </div>
+                    
+                    <!-- 条目编辑表单 -->
+                    <div id="entry-edit-form">
+                        <div class="empty-state" style="padding: 20px;">点击左侧条目进行编辑，或点击"新增条目"</div>
+                    </div>
+                </div>
+            `;
+        }
+
+        function editEntry(index) {
+            currentEditingEntryIndex = index;
+            
+            // 获取条目
+            let entries = [];
+            if (Array.isArray(currentWorldBookData.entries)) {
+                entries = currentWorldBookData.entries;
+            } else if (currentWorldBookData.entries && typeof currentWorldBookData.entries === 'object') {
+                entries = Object.values(currentWorldBookData.entries);
+            }
+            
+            const entry = entries[index];
+            if (!entry) return;
+
+            // 先刷新列表以显示选中状态，再渲染编辑表单
+            renderWorldBookEditor();
+            renderEntryForm(entry, index);
+        }
+
+        function renderEntryForm(entry, index) {
+            const form = document.getElementById('entry-edit-form');
+            const keys = entry.keys || entry.key || [];
+            const keysStr = Array.isArray(keys) ? keys.join(', ') : keys;
+            
+            form.innerHTML = `
+                <div style="font-size: 0.9rem; color: var(--text-secondary); margin-bottom: 10px;">
+                    ${index !== null ? `编辑条目 #${index + 1}` : '新增条目'}
+                </div>
+                
+                <div class="form-group">
+                    <label>📝 条目名称/备注</label>
+                    <input type="text" id="entry-comment" value="${escapeHtml(entry.comment || entry.name || '')}" placeholder="条目名称">
+                </div>
+                
+                <div class="form-group">
+                    <label>🔑 关键词 (逗号分隔)</label>
+                    <input type="text" id="entry-keys" value="${escapeHtml(keysStr)}" placeholder="关键词1, 关键词2, ...">
+                </div>
+                
+                <div class="form-group">
+                    <label>📖 内容</label>
+                    <textarea id="entry-content" rows="6" placeholder="条目内容...">${escapeHtml(entry.content || '')}</textarea>
+                </div>
+                
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                    <div class="form-group">
+                        <label>
+                            <input type="checkbox" id="entry-constant" ${entry.constant ? 'checked' : ''}>
+                            🔒 常驻 (始终注入)
+                        </label>
+                    </div>
+                    <div class="form-group">
+                        <label>
+                            <input type="checkbox" id="entry-enabled" ${entry.enabled !== false ? 'checked' : ''}>
+                            ✅ 启用
+                        </label>
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label>📊 优先级 (数字越大越优先)</label>
+                    <input type="number" id="entry-order" value="${entry.order || entry.insertion_order || 0}" placeholder="0">
+                </div>
+                
+                <div class="btn-group" style="margin-top: 15px;">
+                    <button onclick="saveEntry(${index})" style="background: #1a1a1a; color: white;">💾 保存条目</button>
+                    <button class="secondary" onclick="cancelEdit()">取消</button>
+                </div>
+            `;
+        }
+
+        function addNewEntry() {
+            currentEditingEntryIndex = null;
+            const newEntry = {
+                comment: '',
+                keys: [],
+                content: '',
+                constant: false,
+                enabled: true,
+                order: 0
+            };
+            renderEntryForm(newEntry, null);
+        }
+
+        function saveEntry(index) {
+            const comment = document.getElementById('entry-comment').value;
+            const keysStr = document.getElementById('entry-keys').value;
+            const content = document.getElementById('entry-content').value;
+            const constant = document.getElementById('entry-constant').checked;
+            const enabled = document.getElementById('entry-enabled').checked;
+            const order = parseInt(document.getElementById('entry-order').value) || 0;
+
+            const keys = keysStr.split(',').map(k => k.trim()).filter(k => k);
+
+            const entryData = {
+                comment,
+                keys,
+                key: keys, // 兼容两种格式
+                content,
+                constant,
+                enabled,
+                order,
+                insertion_order: order
+            };
+
+            // 确保 entries 是数组
+            if (!Array.isArray(currentWorldBookData.entries)) {
+                if (currentWorldBookData.entries && typeof currentWorldBookData.entries === 'object') {
+                    currentWorldBookData.entries = Object.values(currentWorldBookData.entries);
+                } else {
+                    currentWorldBookData.entries = [];
+                }
+            }
+
+            if (index !== null && index >= 0) {
+                // 更新现有条目
+                currentWorldBookData.entries[index] = entryData;
+                showToast('条目已更新');
+            } else {
+                // 添加新条目
+                currentWorldBookData.entries.push(entryData);
+                currentEditingEntryIndex = currentWorldBookData.entries.length - 1;
+                showToast('条目已添加');
+            }
+
+            renderWorldBookEditor();
+            // 重新渲染编辑表单
+            if (currentEditingEntryIndex !== null) {
+                renderEntryForm(currentWorldBookData.entries[currentEditingEntryIndex], currentEditingEntryIndex);
+            }
+        }
+
+        function deleteEntry(index) {
+            if (!confirm('确定要删除此条目吗？')) return;
+
+            // 确保 entries 是数组
+            if (!Array.isArray(currentWorldBookData.entries)) {
+                if (currentWorldBookData.entries && typeof currentWorldBookData.entries === 'object') {
+                    currentWorldBookData.entries = Object.values(currentWorldBookData.entries);
+                } else {
+                    currentWorldBookData.entries = [];
+                }
+            }
+
+            currentWorldBookData.entries.splice(index, 1);
+            
+            if (currentEditingEntryIndex === index) {
+                currentEditingEntryIndex = null;
+            } else if (currentEditingEntryIndex > index) {
+                currentEditingEntryIndex--;
+            }
+
+            showToast('条目已删除');
+            renderWorldBookEditor();
+        }
+
+        function cancelEdit() {
+            currentEditingEntryIndex = null;
+            const form = document.getElementById('entry-edit-form');
+            form.innerHTML = '<div class="empty-state" style="padding: 20px;">点击左侧条目进行编辑，或点击"新增条目"</div>';
+            renderWorldBookEditor();
+        }
+
+        async function saveWorldBook() {
+            if (!currentWorldBookFilename || !currentWorldBookData) {
+                showToast('请先选择一个世界书', true);
+                return;
+            }
+
+            try {
+                const res = await fetch(`/api/worldbooks/${encodeURIComponent(currentWorldBookFilename)}/save`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ worldbook: currentWorldBookData })
+                });
+                const data = await res.json();
+
+                if (data.success) {
+                    showToast('世界书已保存');
+                } else {
+                    showToast('保存失败: ' + data.error, true);
+                }
+            } catch (e) {
+                showToast('保存失败', true);
+            }
+        }
+
+        async function refreshWorldBooks() {
+            try {
+                await fetch('/api/worldbooks/refresh', { method: 'POST' });
+                loadWorldBooks();
+                showToast('世界书列表已刷新');
+            } catch (e) {
+                showToast('刷新失败', true);
+            }
+        }
+
+        // 上传世界书
+        async function uploadWorldBook(input) {
+            const file = input.files[0];
+            if (!file) return;
+            
+            const formData = new FormData();
+            formData.append('file', file);
+            
+            try {
+                const res = await fetch('/api/worldbooks/upload', {
+                    method: 'POST',
+                    body: formData
+                });
+                const data = await res.json();
+                
+                if (data.success) {
+                    showToast(`世界书 "${data.filename}" 上传成功`);
+                    loadWorldBooks();
+                } else {
+                    showToast('上传失败: ' + data.error, true);
+                }
+            } catch (e) {
+                showToast('上传失败', true);
+            }
+            input.value = ''; // 清空选择
+        }
+
+        // 删除世界书
+        async function deleteWorldBook(filename) {
+            if (!confirm(`确定要删除世界书 "${filename}" 吗？`)) return;
+            
+            try {
+                const res = await fetch(`/api/worldbooks/${encodeURIComponent(filename)}`, { method: 'DELETE' });
+                const data = await res.json();
+                
+                if (data.success) {
+                    showToast('世界书已删除');
+                    loadWorldBooks();
+                } else {
+                    showToast('删除失败: ' + data.error, true);
+                }
+            } catch (e) {
+                showToast('删除失败', true);
+            }
+        }
+
+        async function testWorldBook() {
+            const text = document.getElementById('worldbook-test-text').value;
+            if (!text) return;
+            
+            try {
+                const res = await fetch('/api/worldbooks/test', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ text })
+                });
+                const data = await res.json();
+                
+                const result = document.getElementById('worldbook-test-result');
+                if (data.entries && data.entries.length > 0) {
+                    result.innerHTML = `
+                        <div style="background: var(--bg-primary); padding: 10px; border-radius: 6px;">
+                            <strong>匹配到 ${data.entries.length} 个条目:</strong>
+                            ${data.entries.map(e => `<div style="margin-top: 8px; padding: 8px; background: var(--bg-card); border-radius: 4px;">
+                                <div><strong>${e.comment || '未命名'}</strong></div>
+                                <div style="font-size: 0.85rem; color: var(--text-secondary);">关键词: ${e.keys?.join(', ') || '-'}</div>
+                            </div>`).join('')}
+                        </div>
+                    `;
+                } else {
+                    result.innerHTML = '<div style="color: var(--text-secondary);">未匹配到任何条目</div>';
+                }
+            } catch (e) {
+                showToast('测试失败', true);
+            }
+        }
+
+        // 会话
+        async function loadSessions() {
+            try {
+                const res = await fetch('/api/sessions');
+                const sessions = await res.json();
+                
+                const list = document.getElementById('session-list');
+                if (sessions.length === 0) {
+                    list.innerHTML = '<div class="empty-state">暂无会话</div>';
+                    return;
+                }
+                
+                list.innerHTML = sessions.map(s => `
+                    <div class="session-item">
+                        <div class="session-info" onclick="viewSession('${s.id}')">
+                            <div class="session-id">${s.id}</div>
+                            <div class="session-meta">${s.messageCount} 条消息</div>
+                        </div>
+                        <button class="danger" onclick="clearSession('${s.id}')">清除</button>
+                    </div>
+                `).join('');
+            } catch (e) {
+                console.error('加载会话列表失败', e);
+            }
+        }
+
+        async function viewSession(sessionId) {
+            selectedSession = sessionId;
+            try {
+                const res = await fetch(`/api/sessions/${sessionId}/history`);
+                const history = await res.json();
+                
+                const container = document.getElementById('session-history');
+                if (history.length === 0) {
+                    container.innerHTML = '<div class="empty-state">暂无消息</div>';
+                    return;
+                }
+                
+                container.innerHTML = `
+                    <div class="message-list">
+                        ${history.map(m => `
+                            <div class="message ${m.role}">
+                                <div class="message-role">${m.role === 'user' ? '用户' : 'AI'}</div>
+                                <div class="message-content">${m.content}</div>
+                            </div>
+                        `).join('')}
+                    </div>
+                `;
+            } catch (e) {
+                console.error('加载会话历史失败', e);
+            }
+        }
+
+        async function clearSession(sessionId) {
+            if (!confirm('确定要清除此会话的历史记录吗？')) return;
+            
+            try {
+                await fetch(`/api/sessions/${sessionId}/history`, { method: 'DELETE' });
+                loadSessions();
+                if (selectedSession === sessionId) {
+                    document.getElementById('session-history').innerHTML = '<div class="empty-state">会话已清除</div>';
+                }
+                showToast('会话已清除');
+            } catch (e) {
+                showToast('清除失败', true);
+            }
+        }
+
+        // 正则规则
+        async function loadRegexRules() {
+            try {
+                const res = await fetch('/api/regex');
+                const rules = await res.json();
+                
+                const list = document.getElementById('regex-list');
+                if (rules.length === 0) {
+                    list.innerHTML = '<div class="empty-state">暂无规则</div>';
+                    return;
+                }
+                
+                list.innerHTML = rules.map((r, i) => `
+                    <div class="regex-rule">
+                        <div style="display: flex; justify-content: space-between; align-items: center;">
+                            <strong>${r.name || '未命名规则'}</strong>
+                            <button class="danger" onclick="deleteRegexRule(${i})" style="padding: 5px 10px;">删除</button>
+                        </div>
+                        <div class="pattern">${r.pattern}</div>
+                        <div style="font-size: 0.85rem; color: var(--text-secondary);">
+                            替换为: ${r.replacement || '(删除)'} | 阶段: ${r.stage || 'output'}
+                        </div>
+                    </div>
+                `).join('');
+            } catch (e) {
+                console.error('加载正则规则失败', e);
+            }
+        }
+
+        async function addRegexRule() {
+            const rule = {
+                name: document.getElementById('regex-name').value,
+                pattern: document.getElementById('regex-pattern').value,
+                flags: document.getElementById('regex-flags').value,
+                replacement: document.getElementById('regex-replacement').value,
+                stage: document.getElementById('regex-stage').value
+            };
+            
+            if (!rule.pattern) {
+                showToast('请输入正则表达式', true);
+                return;
+            }
+            
+            try {
+                await fetch('/api/regex', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(rule)
+                });
+                loadRegexRules();
+                showToast('规则已添加');
+                
+                // 清空表单
+                document.getElementById('regex-name').value = '';
+                document.getElementById('regex-pattern').value = '';
+                document.getElementById('regex-replacement').value = '';
+            } catch (e) {
+                showToast('添加失败', true);
+            }
+        }
+
+        async function deleteRegexRule(index) {
+            if (!confirm('确定要删除此规则吗？')) return;
+            
+            try {
+                await fetch(`/api/regex/${index}`, { method: 'DELETE' });
+                loadRegexRules();
+                showToast('规则已删除');
+            } catch (e) {
+                showToast('删除失败', true);
+            }
+        }
+
+        async function testRegex() {
+            const pattern = document.getElementById('regex-pattern').value;
+            const flags = document.getElementById('regex-flags').value;
+            const replacement = document.getElementById('regex-replacement').value;
+            const testText = document.getElementById('regex-test-text').value;
+            
+            if (!pattern || !testText) {
+                showToast('请输入正则表达式和测试文本', true);
+                return;
+            }
+            
+            try {
+                const res = await fetch('/api/regex/test', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ pattern, flags, replacement, testText })
+                });
+                const data = await res.json();
+                
+                const result = document.getElementById('regex-test-result');
+                if (data.success) {
+                    result.innerHTML = `
+                        <div style="background: var(--bg-primary); padding: 10px; border-radius: 6px;">
+                            <p><strong>匹配数:</strong> ${data.matches.length}</p>
+                            <p><strong>结果:</strong></p>
+                            <div style="background: var(--bg-card); padding: 8px; border-radius: 4px; margin-top: 5px; white-space: pre-wrap;">${data.result}</div>
+                        </div>
+                    `;
+                } else {
+                    result.innerHTML = `<div style="color: var(--error);">错误: ${data.error}</div>`;
+                }
+            } catch (e) {
+                showToast('测试失败', true);
+            }
+        }
+
+        // 配置
+        async function loadConfig() {
+            try {
+                const res = await fetch('/api/config');
+                currentConfig = await res.json();
+                
+                document.getElementById('config-onebot-url').value = currentConfig.onebot?.url || '';
+                document.getElementById('config-onebot-token').value = currentConfig.onebot?.accessToken || '';
+                document.getElementById('config-ai-baseurl').value = currentConfig.ai?.baseUrl || '';
+                document.getElementById('config-ai-model').value = currentConfig.ai?.model || '';
+                document.getElementById('config-ai-maxtokens').value = currentConfig.ai?.maxTokens || '';
+                document.getElementById('config-ai-temperature').value = currentConfig.ai?.temperature || '';
+                document.getElementById('config-chat-trigger').value = currentConfig.chat?.triggerPrefix || '';
+                document.getElementById('config-chat-history').value = currentConfig.chat?.historyLimit || '';
+                document.getElementById('config-chat-groups').value = (currentConfig.chat?.allowedGroups || []).join(',');
+            } catch (e) {
+                console.error('加载配置失败', e);
+            }
+        }
+
+        async function saveConfig() {
+            const newConfig = {
+                onebot: {
+                    url: document.getElementById('config-onebot-url').value,
+                    accessToken: document.getElementById('config-onebot-token').value
+                },
+                ai: {
+                    baseUrl: document.getElementById('config-ai-baseurl').value,
+                    apiKey: document.getElementById('config-ai-apikey').value || currentConfig.ai?.apiKey,
+                    model: document.getElementById('config-ai-model').value,
+                    maxTokens: parseInt(document.getElementById('config-ai-maxtokens').value) || 4096,
+                    temperature: parseFloat(document.getElementById('config-ai-temperature').value) || 0.7
+                },
+                chat: {
+                    triggerPrefix: document.getElementById('config-chat-trigger').value,
+                    historyLimit: parseInt(document.getElementById('config-chat-history').value) || 20,
+                    allowedGroups: document.getElementById('config-chat-groups').value.split(',').filter(g => g.trim())
+                }
+            };
+            
+            try {
+                await fetch('/api/config', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(newConfig)
+                });
+                showToast('配置已保存');
+                loadConfig();
+            } catch (e) {
+                showToast('保存失败', true);
+            }
+        }
+
+        // OneBot 重连
+        async function reconnectOneBot() {
+            try {
+                await fetch('/api/status/onebot/reconnect', { method: 'POST' });
+                showToast('正在重新连接...');
+                setTimeout(loadStatus, 2000);
+            } catch (e) {
+                showToast('重连失败', true);
+            }
+        }
+
+        // AI 测试
+        async function testAI() {
+            const message = document.getElementById('test-message').value;
+            if (!message) {
+                showToast('请输入测试消息', true);
+                return;
+            }
+            
+            const result = document.getElementById('test-result');
+            result.style.display = 'block';
+            result.textContent = '正在请求...';
+            
+            try {
+                const res = await fetch('/api/test/ai', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ message })
+                });
+                const data = await res.json();
+                
+                if (data.success) {
+                    result.textContent = data.response;
+                } else {
+                    result.textContent = '错误: ' + data.error;
+                }
+            } catch (e) {
+                result.textContent = '请求失败';
+            }
+        }
+
+        // 日志
+        let logWs = null;
+        
+        function connectLogWebSocket() {
+            const protocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
+            logWs = new WebSocket(`${protocol}//${location.host}/ws/logs`);
+            
+            logWs.onmessage = (event) => {
+                const log = JSON.parse(event.data);
+                addLogEntry(log);
+            };
+            
+            logWs.onclose = () => {
+                setTimeout(connectLogWebSocket, 3000);
+            };
+        }
+
+        function addLogEntry(log) {
+            const container = document.getElementById('log-container');
+            if (container.querySelector('.empty-state')) {
+                container.innerHTML = '';
+            }
+            
+            const entry = document.createElement('div');
+            entry.className = `log-entry ${log.level}`;
+            entry.innerHTML = `<span class="log-time">${new Date(log.timestamp).toLocaleTimeString()}</span>${log.message}`;
+            container.appendChild(entry);
+            container.scrollTop = container.scrollHeight;
+            
+            // 限制日志数量
+            while (container.children.length > 200) {
+                container.removeChild(container.firstChild);
+            }
+        }
+
+        async function refreshLogs() {
+            try {
+                const res = await fetch('/api/logs');
+                const logs = await res.json();
+                
+                const container = document.getElementById('log-container');
+                container.innerHTML = '';
+                logs.forEach(log => addLogEntry(log));
+            } catch (e) {
+                console.error('刷新日志失败', e);
+            }
+        }
+
+        function clearLogs() {
+            document.getElementById('log-container').innerHTML = '<div class="empty-state">日志已清空</div>';
+        }
+
+        // Toast 提示
+        function showToast(message, isError = false) {
+            const toast = document.createElement('div');
+            toast.className = `toast ${isError ? 'error' : ''}`;
+            toast.textContent = message;
+            document.body.appendChild(toast);
+            
+            setTimeout(() => {
+                toast.remove();
+            }, 3000);
+        }
+    </script>
+</body>
+</html>
