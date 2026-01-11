@@ -608,6 +608,15 @@
                         <label>允许的群号 (逗号分隔，留空表示全部)</label>
                         <input type="text" id="config-chat-groups" placeholder="123456,789012">
                     </div>
+                    <div class="form-group">
+                        <label>
+                            <input type="checkbox" id="config-chat-split" checked>
+                            📝 消息分段 (双换行分割成多条消息)
+                        </label>
+                        <p style="font-size: 0.8rem; color: var(--text-secondary); margin-top: 5px;">
+                            开启后，AI 回复中的双换行会被分割成多条消息发送
+                        </p>
+                    </div>
                 </div>
             </div>
             <div style="margin-top: 20px;">
@@ -1541,6 +1550,7 @@
                 document.getElementById('config-chat-trigger').value = currentConfig.chat?.triggerPrefix || '';
                 document.getElementById('config-chat-history').value = currentConfig.chat?.historyLimit || '';
                 document.getElementById('config-chat-groups').value = (currentConfig.chat?.allowedGroups || []).join(',');
+                document.getElementById('config-chat-split').checked = currentConfig.chat?.splitMessage !== false;
             } catch (e) {
                 console.error('加载配置失败', e);
             }
@@ -1562,7 +1572,9 @@
                 chat: {
                     triggerPrefix: document.getElementById('config-chat-trigger').value,
                     historyLimit: parseInt(document.getElementById('config-chat-history').value) || 20,
-                    allowedGroups: document.getElementById('config-chat-groups').value.split(',').filter(g => g.trim())
+                    allowedGroups: document.getElementById('config-chat-groups').value.split(',').filter(g => g.trim()),
+                    splitMessage: document.getElementById('config-chat-split').checked,
+                    defaultCharacter: currentConfig.chat?.defaultCharacter || ''
                 }
             };
             

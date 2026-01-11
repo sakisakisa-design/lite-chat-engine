@@ -110,15 +110,23 @@ async function handleMessage(event, bot) {
     const triggerMode = config.chat.triggerMode;
     let shouldRespond = false;
     
-    if (triggerMode === 'always') {
-        shouldRespond = true;
-    } else if (triggerMode === 'at' && isAtMe) {
-        shouldRespond = true;
-    } else if (triggerMode === 'keyword') {
-        for (const kw of config.chat.triggerKeywords) {
-            if (text.includes(kw)) {
-                shouldRespond = true;
-                break;
+    if (message_type === 'group') {
+        // 群聊：必须 @机器人 才回复
+        if (isAtMe) {
+            shouldRespond = true;
+        }
+    } else {
+        // 私聊：根据 triggerMode 判断
+        if (triggerMode === 'always') {
+            shouldRespond = true;
+        } else if (triggerMode === 'at' && isAtMe) {
+            shouldRespond = true;
+        } else if (triggerMode === 'keyword') {
+            for (const kw of config.chat.triggerKeywords) {
+                if (text.includes(kw)) {
+                    shouldRespond = true;
+                    break;
+                }
             }
         }
     }
@@ -169,11 +177,30 @@ async function handleMessage(event, bot) {
         
         logger.info(`回复 [${sessionId}]: ${processedReply.substring(0, 50)}...`);
         
-        // 发送回复
-        if (message_type === 'group') {
-            await bot.sendGroupMessage(group_id, processedReply);
+        // 发送回复（支持消息分段）
+        const splitMessage = config.chat.splitMessage !== false; // 默认开启
+        
+        if (splitMessage) {
+            // 按双换行分割成多条消息
+            const segments = processedReply.split(/\n\n+/).filter(s => s.trim());
+            for (const segment of segments) {
+                if (message_type === 'group') {
+                    await bot.sendGroupMessage(group_id, segment.trim());
+                } else {
+                    await bot.sendPrivateMessage(user_id, segment.trim());
+                }
+                // 多条消息之间稍微延迟，避免发送过快
+                if (segments.length > 1) {
+                    await new Promise(r => setTimeout(r, 500));
+                }
+            }
         } else {
-            await bot.sendPrivateMessage(user_id, processedReply);
+            // 不分段，发送完整消息
+            if (message_type === 'group') {
+                await bot.sendGroupMessage(group_id, processedReply);
+            } else {
+                await bot.sendPrivateMessage(user_id, processedReply);
+            }
         }
         
     } catch (error) {
