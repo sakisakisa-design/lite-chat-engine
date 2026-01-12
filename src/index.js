@@ -166,10 +166,32 @@ async function handleMessage(event, bot) {
         );
         
         logger.info(`世界书匹配: ${worldBookCount} 条`);
-        
-        // 调用 AI
-        const reply = await aiClient.chat(messages);
-        
+
+        // 调用 AI（带超时检测）
+        const TIMEOUT_MS = 60000; // 1分钟超时
+        let reply;
+
+        try {
+            const aiPromise = aiClient.chat(messages);
+            const timeoutPromise = new Promise((_, reject) => {
+                setTimeout(() => reject(new Error('AI_TIMEOUT')), TIMEOUT_MS);
+            });
+
+            reply = await Promise.race([aiPromise, timeoutPromise]);
+        } catch (error) {
+            if (error.message === 'AI_TIMEOUT') {
+                logger.warn(`AI 响应超时 [${sessionId}]`);
+                const timeoutMsg = '丢包了，等了一分钟都没反应...要不你再试试？';
+                if (message_type === 'group') {
+                    await bot.sendGroupMessage(group_id, timeoutMsg);
+                } else {
+                    await bot.sendPrivateMessage(user_id, timeoutMsg);
+                }
+                return; // 直接返回，不继续处理
+            }
+            throw error; // 其他错误继续抛出
+        }
+
         // 正则处理
         const processedReply = regexProcessor.process(reply);
         
