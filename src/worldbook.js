@@ -63,14 +63,16 @@ export class WorldBookManager {
      * @param {Object} worldBook - 世界书对象
      * @param {string} inputText - 用于匹配的文本（包括历史消息）
      * @param {number} maxEntries - 最大返回条目数
+     * @param {Set<string>} stickyKeys - 当前会话中仍然粘性的条目键集合
      */
-    matchEntries(worldBook, inputText, maxEntries = 10) {
+    matchEntries(worldBook, inputText, maxEntries = 10, stickyKeys = new Set()) {
         if (!worldBook || !worldBook.entries) {
             return [];
         }
 
         const matched = [];
         const constants = [];
+        const stickyMatched = [];  // 粘性触发的条目
         const inputLower = inputText.toLowerCase();
 
         // 支持数组格式和对象格式的 entries
@@ -84,20 +86,31 @@ export class WorldBookManager {
                 continue;
             }
 
+            // 获取条目的唯一标识（用于粘性追踪）
+            const keys = entry.keys || entry.key || [];
+            const entryKey = entry.uid || entry.id || keys[0] || entry.comment || entry.name || 'unknown';
+            
+            // 获取粘性设置（sticky 字段，单位：轮数）
+            // SillyTavern 使用 sticky 字段，0 或 undefined 表示不粘性
+            const sticky = entry.sticky || 0;
+
             // 常驻条目（constant: true）始终包含
             if (entry.constant === true) {
                 constants.push({
                     content: entry.content,
                     order: entry.order || entry.insertion_order || 0,
-                    key: (entry.keys || entry.key || [])[0] || '常驻',
+                    key: entryKey,
                     isConstant: true,
-                    position: entry.position || 0
+                    position: entry.position || 0,
+                    sticky: 0  // 常驻条目不需要粘性
                 });
                 continue;
             }
 
+            // 检查是否是粘性触发（之前触发过，还在粘性期内）
+            const isStickyActive = stickyKeys.has(entryKey);
+
             // 关键词匹配 - 支持 keys（数组格式）和 key（对象格式）
-            const keys = entry.keys || entry.key || [];
             const secondaryKeys = entry.secondary_keys || entry.keysecondary || [];
             let primaryMatch = false;
             let secondaryMatch = secondaryKeys.length === 0; // 如果没有次要关键词，默认为 true
@@ -125,21 +138,33 @@ export class WorldBookManager {
                 }
             }
 
-            if (primaryMatch && secondaryMatch) {
-                matched.push({
+            const keywordMatch = primaryMatch && secondaryMatch;
+
+            // 条目触发条件：关键词匹配 OR 粘性激活
+            if (keywordMatch || isStickyActive) {
+                const entryData = {
                     content: entry.content,
                     order: entry.order || entry.insertion_order || 0,
-                    key: keys[0] || 'unknown',
-                    keys: keys,  // 添加完整的关键词数组
+                    key: entryKey,
+                    keys: keys,
                     comment: entry.comment || entry.name || keys[0] || '未命名',
                     isConstant: false,
-                    position: entry.position || 0
-                });
+                    position: entry.position || 0,
+                    sticky: sticky,
+                    triggeredByKeyword: keywordMatch,  // 标记是否由关键词触发
+                    triggeredBySticky: isStickyActive && !keywordMatch  // 标记是否仅由粘性触发
+                };
+
+                if (keywordMatch) {
+                    matched.push(entryData);
+                } else {
+                    stickyMatched.push(entryData);
+                }
             }
         }
 
-        // 合并常驻和匹配的条目，按 order 排序
-        const all = [...constants, ...matched];
+        // 合并常驻、关键词匹配和粘性触发的条目，按 order 排序
+        const all = [...constants, ...matched, ...stickyMatched];
         all.sort((a, b) => b.order - a.order);
 
         return all.slice(0, maxEntries);

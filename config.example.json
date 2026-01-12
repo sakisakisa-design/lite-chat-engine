@@ -1,4 +1,10 @@
 {
+  "auth": {
+    "enabled": true,
+    "username": "admin",
+    "password": "your-password-here",
+    "sessionSecret": "your-random-secret-key"
+  },
   "server": {
     "port": 8001,
     "host": "0.0.0.0"
@@ -25,5 +31,14 @@
   "regex": {
     "enabled": true,
     "rules": []
+  },
+  "tts": {
+    "enabled": false,
+    "appId": "your-doubao-app-id",
+    "accessToken": "your-doubao-access-token",
+    "voiceType": "zh_female_wanwanxiaohe_moon_bigtts",
+    "speed": 1,
+    "volume": 1,
+    "pitch": 1
   }
 }

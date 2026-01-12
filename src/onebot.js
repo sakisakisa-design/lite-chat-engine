@@ -4,6 +4,7 @@
 
 import WebSocket from 'ws';
 import { EventEmitter } from 'events';
+import fs from 'fs';
 
 export class OneBotClient extends EventEmitter {
     constructor(config, logger) {
@@ -137,6 +138,52 @@ export class OneBotClient extends EventEmitter {
 
     async getFriendList() {
         return this._call('get_friend_list');
+    }
+
+    /**
+     * 发送群语音消息（使用 base64 编码，兼容 Docker 环境）
+     * @param {number} groupId - 群号
+     * @param {string} filePath - 音频文件路径（绝对路径）
+     */
+    async sendGroupRecord(groupId, filePath) {
+        // 读取文件并转换为 base64
+        const audioData = fs.readFileSync(filePath);
+        const base64Data = audioData.toString('base64');
+        
+        return this._call('send_group_msg', {
+            group_id: groupId,
+            message: [
+                {
+                    type: 'record',
+                    data: {
+                        file: `base64://${base64Data}`
+                    }
+                }
+            ]
+        });
+    }
+
+    /**
+     * 发送私聊语音消息（使用 base64 编码，兼容 Docker 环境）
+     * @param {number} userId - 用户 QQ 号
+     * @param {string} filePath - 音频文件路径（绝对路径）
+     */
+    async sendPrivateRecord(userId, filePath) {
+        // 读取文件并转换为 base64
+        const audioData = fs.readFileSync(filePath);
+        const base64Data = audioData.toString('base64');
+        
+        return this._call('send_private_msg', {
+            user_id: userId,
+            message: [
+                {
+                    type: 'record',
+                    data: {
+                        file: `base64://${base64Data}`
+                    }
+                }
+            ]
+        });
     }
 
     /**

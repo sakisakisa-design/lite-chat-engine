@@ -4,6 +4,7 @@
  */
 
 import express from 'express';
+import session from 'express-session';
 import { WebSocketServer } from 'ws';
 import { createServer } from 'http';
 import { fileURLToPath } from 'url';
@@ -19,6 +20,7 @@ import { SessionManager } from './session.js';
 import { RegexProcessor } from './regex.js';
 import { setupRoutes } from './routes.js';
 import { Logger } from './logger.js';
+import { TTSManager, VOICE_TYPES, parseVoiceTags } from './tts.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -52,13 +54,34 @@ const sessionManager = new SessionManager(config.chat.maxHistoryLength);
 const regexProcessor = new RegexProcessor(config.regex);
 const aiClient = new AIClient(config.ai);
 const promptBuilder = new PromptBuilder(characterManager, worldBookManager);
+const ttsManager = new TTSManager();
+
+// 初始化 TTS 配置
+if (config.tts) {
+    ttsManager.updateConfig(config.tts);
+}
 
 // 创建 Express 应用
 const app = express();
 const server = createServer(app);
 
 app.use(express.json());
+
+// Session 中间件（用于登录认证）
+if (config.auth?.enabled) {
+    app.use(session({
+        secret: config.auth.sessionSecret || 'tavern-link-default-secret',
+        resave: false,
+        saveUninitialized: false,
+        cookie: { 
+            secure: false, // 如果使用 HTTPS 设为 true
+            maxAge: 24 * 60 * 60 * 1000 // 24小时
+        }
+    }));
+}
+
 app.use(express.static(join(ROOT_DIR, 'public')));
+app.use('/audio', express.static(join(ROOT_DIR, 'audio')));
 
 // 连接 OneBot
 const bot = new OneBotClient(config.onebot, logger);
@@ -74,7 +97,9 @@ setupRoutes(app, {
     aiClient,
     promptBuilder,
     logger,
-    bot
+    bot,
+    ttsManager,
+    VOICE_TYPES
 });
 
 // 创建 WebSocket 服务器（用于前端实时日志）
@@ -155,17 +180,22 @@ async function handleMessage(event, bot) {
     logger.info(`收到消息 [${sessionId}]: ${text.substring(0, 50)}...`);
     
     try {
-        // 获取会话历史
+        // 获取会话历史和粘性条目
         const session = sessionManager.getSession(sessionId);
+        const stickyKeys = sessionManager.getStickyEntryKeys(sessionId);
         
-        // 构建 Prompt
-        const { messages, worldBookCount } = await promptBuilder.build(
+        // 构建 Prompt（传入粘性键）
+        const { messages, worldBookCount, worldBookEntries } = await promptBuilder.build(
             config.chat.defaultCharacter,
             text,
-            session.messages
+            session.messages,
+            stickyKeys
         );
         
-        logger.info(`世界书匹配: ${worldBookCount} 条`);
+        // 统计触发方式
+        const keywordTriggered = worldBookEntries.filter(e => e.triggeredByKeyword).length;
+        const stickyTriggered = worldBookEntries.filter(e => e.triggeredBySticky).length;
+        logger.info(`世界书匹配: ${worldBookCount} 条 (关键词: ${keywordTriggered}, 粘性: ${stickyTriggered})`);
 
         // 调用 AI（带超时检测）
         const TIMEOUT_MS = 60000; // 1分钟超时
@@ -199,32 +229,74 @@ async function handleMessage(event, bot) {
         sessionManager.addMessage(sessionId, 'user', text);
         sessionManager.addMessage(sessionId, 'assistant', processedReply);
         
+        // 更新粘性世界书条目状态
+        sessionManager.updateStickyEntries(sessionId, worldBookEntries);
+        
         logger.info(`回复 [${sessionId}]: ${processedReply.substring(0, 50)}...`);
         
-        // 发送回复（支持消息分段）
-        const splitMessage = config.chat.splitMessage !== false; // 默认开启
+        // 解析 [voice:...] 标签
+        const ttsConfig = ttsManager.getConfig();
+        const { textParts, hasVoice } = parseVoiceTags(processedReply);
         
-        if (splitMessage) {
-            // 按双换行分割成多条消息
-            const segments = processedReply.split(/\n\n+/).filter(s => s.trim());
-            for (const segment of segments) {
-                if (message_type === 'group') {
-                    await bot.sendGroupMessage(group_id, segment.trim());
+        // 按顺序发送文字和语音
+        for (const part of textParts) {
+            if (part.type === 'text') {
+                // 发送文字消息（支持分段）
+                const splitMessage = config.chat.splitMessage !== false;
+                
+                if (splitMessage) {
+                    const segments = part.content.split(/\n\n+/).filter(s => s.trim());
+                    for (const segment of segments) {
+                        if (message_type === 'group') {
+                            await bot.sendGroupMessage(group_id, segment.trim());
+                        } else {
+                            await bot.sendPrivateMessage(user_id, segment.trim());
+                        }
+                        if (segments.length > 1) {
+                            await new Promise(r => setTimeout(r, 500));
+                        }
+                    }
                 } else {
-                    await bot.sendPrivateMessage(user_id, segment.trim());
+                    if (message_type === 'group') {
+                        await bot.sendGroupMessage(group_id, part.content);
+                    } else {
+                        await bot.sendPrivateMessage(user_id, part.content);
+                    }
                 }
-                // 多条消息之间稍微延迟，避免发送过快
-                if (segments.length > 1) {
-                    await new Promise(r => setTimeout(r, 500));
+            } else if (part.type === 'voice' && ttsConfig.enabled) {
+                // 发送语音消息
+                try {
+                    logger.info(`[TTS] 合成语音: ${part.content.substring(0, 30)}...`);
+                    const audioPath = await ttsManager.synthesize(part.content);
+                    
+                    if (message_type === 'group') {
+                        await bot.sendGroupRecord(group_id, audioPath);
+                    } else {
+                        await bot.sendPrivateRecord(user_id, audioPath);
+                    }
+                    logger.info(`[TTS] 语音发送成功`);
+                } catch (ttsError) {
+                    // TTS 失败时，将语音内容作为文字发送
+                    logger.warn(`[TTS] 语音合成失败: ${ttsError.message}`);
+                    const fallbackText = `（语音：${part.content}）`;
+                    if (message_type === 'group') {
+                        await bot.sendGroupMessage(group_id, fallbackText);
+                    } else {
+                        await bot.sendPrivateMessage(user_id, fallbackText);
+                    }
+                }
+            } else if (part.type === 'voice' && !ttsConfig.enabled) {
+                // TTS 未启用时，将语音内容作为文字发送
+                const fallbackText = `（语音：${part.content}）`;
+                if (message_type === 'group') {
+                    await bot.sendGroupMessage(group_id, fallbackText);
+                } else {
+                    await bot.sendPrivateMessage(user_id, fallbackText);
                 }
             }
-        } else {
-            // 不分段，发送完整消息
-            if (message_type === 'group') {
-                await bot.sendGroupMessage(group_id, processedReply);
-            } else {
-                await bot.sendPrivateMessage(user_id, processedReply);
-            }
+            
+            // 消息之间稍微延迟
+            await new Promise(r => setTimeout(r, 300));
         }
         
     } catch (error) {

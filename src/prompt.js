@@ -14,8 +14,9 @@ export class PromptBuilder {
      * @param {string} characterName - 角色名
      * @param {string} userMessage - 用户消息
      * @param {Array} historyMessages - 历史消息
+     * @param {Set<string>} stickyKeys - 当前会话的粘性条目键集合
      */
-    async build(characterName, userMessage, historyMessages = []) {
+    async build(characterName, userMessage, historyMessages = [], stickyKeys = new Set()) {
         // 读取角色数据
         const character = this.characterManager.readFromPng(characterName);
         
@@ -25,8 +26,8 @@ export class PromptBuilder {
         // 用于世界书匹配的文本：历史消息 + 当前消息
         const allText = historyMessages.map(m => m.content).join(' ') + ' ' + userMessage;
         
-        // 匹配世界书条目
-        const worldBookEntries = this.worldBookManager.matchEntries(worldBook, allText, 10);
+        // 匹配世界书条目（传入粘性键）
+        const worldBookEntries = this.worldBookManager.matchEntries(worldBook, allText, 10, stickyKeys);
         
         // 构建系统提示
         let systemPrompt = '';
@@ -84,7 +85,15 @@ export class PromptBuilder {
             messages,
             character,
             worldBookCount: worldBookEntries.length,
-            worldBookKeys: worldBookEntries.map(e => e.key)
+            worldBookKeys: worldBookEntries.map(e => e.key),
+            // 返回完整的条目信息，用于更新粘性状态
+            worldBookEntries: worldBookEntries.map(e => ({
+                key: e.key,
+                sticky: e.sticky || 0,
+                triggeredByKeyword: e.triggeredByKeyword,
+                triggeredBySticky: e.triggeredBySticky,
+                comment: e.comment
+            }))
         };
     }
 }

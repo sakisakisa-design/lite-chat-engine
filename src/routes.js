@@ -18,7 +18,64 @@ const __dirname = path.dirname(__filename);
  * @param {Object} deps - 依赖注入
  */
 export function setupRoutes(app, deps) {
-    const { config, saveConfig, characterManager, worldBookManager, sessionManager, regexProcessor, aiClient, promptBuilder, logger, bot } = deps;
+    const { config, saveConfig, characterManager, worldBookManager, sessionManager, regexProcessor, aiClient, promptBuilder, logger, bot, ttsManager, VOICE_TYPES } = deps;
+
+    // ==================== 认证中间件 ====================
+    
+    // 检查是否需要认证
+    const requireAuth = (req, res, next) => {
+        // 如果认证未启用，直接通过
+        if (!config.auth?.enabled) {
+            return next();
+        }
+        
+        // 检查是否已登录
+        if (req.session?.authenticated) {
+            return next();
+        }
+        
+        // 未登录，返回 401
+        res.status(401).json({ error: '未登录', needLogin: true });
+    };
+
+    // ==================== 登录相关路由 ====================
+
+    // 检查登录状态
+    app.get('/api/auth/status', (req, res) => {
+        if (!config.auth?.enabled) {
+            return res.json({ enabled: false, authenticated: true });
+        }
+        res.json({ 
+            enabled: true, 
+            authenticated: req.session?.authenticated || false 
+        });
+    });
+
+    // 登录
+    app.post('/api/auth/login', (req, res) => {
+        if (!config.auth?.enabled) {
+            return res.json({ success: true, message: '认证未启用' });
+        }
+        
+        const { username, password } = req.body;
+        
+        if (username === config.auth.username && password === config.auth.password) {
+            req.session.authenticated = true;
+            logger.info(`用户 ${username} 登录成功`);
+            res.json({ success: true, message: '登录成功' });
+        } else {
+            logger.warn(`登录失败: 用户名或密码错误`);
+            res.status(401).json({ success: false, error: '用户名或密码错误' });
+        }
+    });
+
+    // 登出
+    app.post('/api/auth/logout', (req, res) => {
+        if (req.session) {
+            req.session.destroy();
+        }
+        res.json({ success: true, message: '已登出' });
+    });
 
     // 文件上传配置
     const storage = multer.diskStorage({
@@ -61,8 +118,8 @@ export function setupRoutes(app, deps) {
 
     // ==================== 配置管理 ====================
 
-    // 获取配置
-    app.get('/api/config', (req, res) => {
+    // 获取配置（需要认证）
+    app.get('/api/config', requireAuth, (req, res) => {
         // 隐藏敏感信息
         const safeConfig = {
             ...config,
@@ -74,8 +131,8 @@ export function setupRoutes(app, deps) {
         res.json(safeConfig);
     });
 
-    // 更新配置
-    app.post('/api/config', async (req, res) => {
+    // 更新配置（需要认证）
+    app.post('/api/config', requireAuth, async (req, res) => {
         try {
             const newConfig = req.body;
             
@@ -95,8 +152,8 @@ export function setupRoutes(app, deps) {
 
     // ==================== 角色卡管理 ====================
 
-    // 获取角色列表
-    app.get('/api/characters', async (req, res) => {
+    // 获取角色列表（需要认证）
+    app.get('/api/characters', requireAuth, async (req, res) => {
         try {
             const filenames = characterManager.listCharacters();
             // 返回包含 name 和 filename 的对象数组
@@ -121,8 +178,8 @@ export function setupRoutes(app, deps) {
         }
     });
 
-    // 获取当前角色
-    app.get('/api/characters/current', (req, res) => {
+    // 获取当前角色（需要认证）
+    app.get('/api/characters/current', requireAuth, (req, res) => {
         const character = characterManager.getCurrentCharacter();
         if (character) {
             res.json(character);
@@ -131,8 +188,8 @@ export function setupRoutes(app, deps) {
         }
     });
 
-    // 选择角色
-    app.post('/api/characters/select', async (req, res) => {
+    // 选择角色（需要认证）
+    app.post('/api/characters/select', requireAuth, async (req, res) => {
         try {
             const { filename } = req.body;
             // 移除 .png 扩展名
@@ -151,8 +208,8 @@ export function setupRoutes(app, deps) {
         }
     });
 
-    // 刷新角色列表
-    app.post('/api/characters/refresh', async (req, res) => {
+    // 刷新角色列表（需要认证）
+    app.post('/api/characters/refresh', requireAuth, async (req, res) => {
         try {
             await characterManager.scanCharacters();
             const characters = await characterManager.listCharacters();
@@ -163,8 +220,8 @@ export function setupRoutes(app, deps) {
         }
     });
 
-    // 上传角色卡
-    app.post('/api/characters/upload', upload.single('file'), async (req, res) => {
+    // 上传角色卡（需要认证）
+    app.post('/api/characters/upload', requireAuth, upload.single('file'), async (req, res) => {
         try {
             if (!req.file) {
                 return res.status(400).json({ success: false, error: '未上传文件' });
@@ -180,8 +237,8 @@ export function setupRoutes(app, deps) {
         }
     });
 
-    // 删除角色卡
-    app.delete('/api/characters/:filename', async (req, res) => {
+    // 删除角色卡（需要认证）
+    app.delete('/api/characters/:filename', requireAuth, async (req, res) => {
         try {
             const { filename } = req.params;
             const filePath = path.join(config.chat.dataDir || './data', 'characters', filename);
@@ -195,8 +252,8 @@ export function setupRoutes(app, deps) {
         }
     });
 
-    // 获取角色卡详情
-    app.get('/api/characters/:filename/detail', async (req, res) => {
+    // 获取角色卡详情（需要认证）
+    app.get('/api/characters/:filename/detail', requireAuth, async (req, res) => {
         try {
             const { filename } = req.params;
             const characterName = filename.replace(/\.png$/i, '');
@@ -208,8 +265,8 @@ export function setupRoutes(app, deps) {
         }
     });
 
-    // 更新角色卡（保存编辑）
-    app.post('/api/characters/:filename/update', async (req, res) => {
+    // 更新角色卡（保存编辑，需要认证）
+    app.post('/api/characters/:filename/update', requireAuth, async (req, res) => {
         try {
             const { filename } = req.params;
             const updates = req.body;
@@ -228,8 +285,8 @@ export function setupRoutes(app, deps) {
 
     // ==================== 世界书管理 ====================
 
-    // 获取世界书列表
-    app.get('/api/worldbooks', async (req, res) => {
+    // 获取世界书列表（需要认证）
+    app.get('/api/worldbooks', requireAuth, async (req, res) => {
         try {
             const worldbooks = await worldBookManager.listWorldBooks();
             // 过滤掉无效的文件名
@@ -241,8 +298,8 @@ export function setupRoutes(app, deps) {
         }
     });
 
-    // 获取当前世界书
-    app.get('/api/worldbooks/current', (req, res) => {
+    // 获取当前世界书（需要认证）
+    app.get('/api/worldbooks/current', requireAuth, (req, res) => {
         const worldbook = worldBookManager.getCurrentWorldBook();
         if (worldbook) {
             res.json(worldbook);
@@ -251,8 +308,8 @@ export function setupRoutes(app, deps) {
         }
     });
 
-    // 选择世界书
-    app.post('/api/worldbooks/select', async (req, res) => {
+    // 选择世界书（需要认证）
+    app.post('/api/worldbooks/select', requireAuth, async (req, res) => {
         try {
             const { filename } = req.body;
             const worldbook = await worldBookManager.loadWorldBook(filename);
@@ -263,8 +320,8 @@ export function setupRoutes(app, deps) {
         }
     });
 
-    // 刷新世界书列表
-    app.post('/api/worldbooks/refresh', async (req, res) => {
+    // 刷新世界书列表（需要认证）
+    app.post('/api/worldbooks/refresh', requireAuth, async (req, res) => {
         try {
             await worldBookManager.scanWorldBooks();
             const worldbooks = await worldBookManager.listWorldBooks();
@@ -275,8 +332,8 @@ export function setupRoutes(app, deps) {
         }
     });
 
-    // 上传世界书
-    app.post('/api/worldbooks/upload', upload.single('file'), async (req, res) => {
+    // 上传世界书（需要认证）
+    app.post('/api/worldbooks/upload', requireAuth, upload.single('file'), async (req, res) => {
         try {
             if (!req.file) {
                 return res.status(400).json({ success: false, error: '未上传文件' });
@@ -292,8 +349,8 @@ export function setupRoutes(app, deps) {
         }
     });
 
-    // 删除世界书
-    app.delete('/api/worldbooks/:filename', async (req, res) => {
+    // 删除世界书（需要认证）
+    app.delete('/api/worldbooks/:filename', requireAuth, async (req, res) => {
         try {
             const { filename } = req.params;
             const filePath = path.join(config.chat.dataDir || './data', 'worlds', filename);
@@ -307,8 +364,8 @@ export function setupRoutes(app, deps) {
         }
     });
 
-    // 测试世界书匹配
-    app.post('/api/worldbooks/test', (req, res) => {
+    // 测试世界书匹配（需要认证）
+    app.post('/api/worldbooks/test', requireAuth, (req, res) => {
         try {
             const { text } = req.body;
             const entries = worldBookManager.findMatchingEntries(text);
@@ -319,8 +376,8 @@ export function setupRoutes(app, deps) {
         }
     });
 
-    // 获取世界书内容（用于编辑）
-    app.get('/api/worldbooks/:filename/content', async (req, res) => {
+    // 获取世界书内容（用于编辑，需要认证）
+    app.get('/api/worldbooks/:filename/content', requireAuth, async (req, res) => {
         try {
             const { filename } = req.params;
             const filePath = path.join(config.chat.dataDir || './data', 'worlds', filename);
@@ -333,8 +390,8 @@ export function setupRoutes(app, deps) {
         }
     });
 
-    // 保存世界书内容
-    app.post('/api/worldbooks/:filename/save', async (req, res) => {
+    // 保存世界书内容（需要认证）
+    app.post('/api/worldbooks/:filename/save', requireAuth, async (req, res) => {
         try {
             const { filename } = req.params;
             const { worldbook } = req.body;
@@ -360,8 +417,8 @@ export function setupRoutes(app, deps) {
         }
     });
 
-    // 从角色卡提取内嵌世界书
-    app.post('/api/worldbooks/extract-from-character', async (req, res) => {
+    // 从角色卡提取内嵌世界书（需要认证）
+    app.post('/api/worldbooks/extract-from-character', requireAuth, async (req, res) => {
         try {
             const { filename } = req.body;
             
@@ -417,14 +474,14 @@ export function setupRoutes(app, deps) {
 
     // ==================== 会话管理 ====================
 
-    // 获取所有会话
-    app.get('/api/sessions', (req, res) => {
+    // 获取所有会话（需要认证）
+    app.get('/api/sessions', requireAuth, (req, res) => {
         const sessions = sessionManager.listSessions();
         res.json(sessions);
     });
 
-    // 获取指定会话
-    app.get('/api/sessions/:sessionId', (req, res) => {
+    // 获取指定会话（需要认证）
+    app.get('/api/sessions/:sessionId', requireAuth, (req, res) => {
         const { sessionId } = req.params;
         const session = sessionManager.getSession(sessionId);
         if (session) {
@@ -434,23 +491,23 @@ export function setupRoutes(app, deps) {
         }
     });
 
-    // 获取会话历史
-    app.get('/api/sessions/:sessionId/history', (req, res) => {
+    // 获取会话历史（需要认证）
+    app.get('/api/sessions/:sessionId/history', requireAuth, (req, res) => {
         const { sessionId } = req.params;
         const limit = parseInt(req.query.limit) || 50;
         const history = sessionManager.getHistory(sessionId, limit);
         res.json(history);
     });
 
-    // 清除会话历史
-    app.delete('/api/sessions/:sessionId/history', (req, res) => {
+    // 清除会话历史（需要认证）
+    app.delete('/api/sessions/:sessionId/history', requireAuth, (req, res) => {
         const { sessionId } = req.params;
         sessionManager.clearHistory(sessionId);
         res.json({ success: true, message: '会话历史已清除' });
     });
 
-    // 删除会话
-    app.delete('/api/sessions/:sessionId', (req, res) => {
+    // 删除会话（需要认证）
+    app.delete('/api/sessions/:sessionId', requireAuth, (req, res) => {
         const { sessionId } = req.params;
         sessionManager.deleteSession(sessionId);
         res.json({ success: true, message: '会话已删除' });
@@ -458,14 +515,14 @@ export function setupRoutes(app, deps) {
 
     // ==================== 正则规则管理 ====================
 
-    // 获取正则规则
-    app.get('/api/regex', (req, res) => {
+    // 获取正则规则（需要认证）
+    app.get('/api/regex', requireAuth, (req, res) => {
         const rules = regexProcessor.getRules();
         res.json(rules);
     });
 
-    // 添加正则规则
-    app.post('/api/regex', (req, res) => {
+    // 添加正则规则（需要认证）
+    app.post('/api/regex', requireAuth, (req, res) => {
         try {
             const rule = req.body;
             regexProcessor.addRule(rule);
@@ -476,15 +533,15 @@ export function setupRoutes(app, deps) {
         }
     });
 
-    // 删除正则规则
-    app.delete('/api/regex/:index', (req, res) => {
+    // 删除正则规则（需要认证）
+    app.delete('/api/regex/:index', requireAuth, (req, res) => {
         const index = parseInt(req.params.index);
         regexProcessor.removeRule(index);
         res.json({ success: true, message: '规则已删除' });
     });
 
-    // 测试正则规则
-    app.post('/api/regex/test', (req, res) => {
+    // 测试正则规则（需要认证）
+    app.post('/api/regex/test', requireAuth, (req, res) => {
         try {
             const { pattern, flags, replacement, testText } = req.body;
             const result = regexProcessor.testRule(pattern, flags, replacement, testText);
@@ -497,8 +554,8 @@ export function setupRoutes(app, deps) {
 
     // ==================== 测试功能 ====================
 
-    // 测试 AI 调用
-    app.post('/api/test/ai', async (req, res) => {
+    // 测试 AI 调用（需要认证）
+    app.post('/api/test/ai', requireAuth, async (req, res) => {
         try {
             const { message } = req.body;
             const response = await aiClient.chat([
@@ -513,16 +570,89 @@ export function setupRoutes(app, deps) {
 
     // ==================== 日志 ====================
 
-    // 获取最近日志
-    app.get('/api/logs', (req, res) => {
+    // 获取最近日志（需要认证）
+    app.get('/api/logs', requireAuth, (req, res) => {
         const logs = logger.getRecentLogs();
         res.json(logs);
     });
 
+    // ==================== TTS 语音合成 ====================
+
+    // 获取 TTS 配置（需要认证）
+    app.get('/api/tts/config', requireAuth, (req, res) => {
+        const ttsConfig = ttsManager.getConfig();
+        // 隐藏 token
+        res.json({
+            ...ttsConfig,
+            token: ttsConfig.token ? '******' : ''
+        });
+    });
+
+    // 更新 TTS 配置（需要认证）
+    app.post('/api/tts/config', requireAuth, (req, res) => {
+        try {
+            const newConfig = req.body;
+            console.log('[TTS] 收到配置:', JSON.stringify(newConfig, null, 2));
+            // 字段名映射：前端 -> 后端
+            const mappedConfig = {
+                enabled: newConfig.enabled,
+                appid: newConfig.appId || newConfig.appid,
+                token: newConfig.accessToken || newConfig.token,
+                voiceType: newConfig.voiceType,
+                speedRatio: newConfig.speed || newConfig.speedRatio || 1.0,
+                volumeRatio: newConfig.volume || newConfig.volumeRatio || 1.0,
+                pitchRatio: newConfig.pitch || newConfig.pitchRatio || 1.0
+            };
+            console.log('[TTS] 映射后配置:', JSON.stringify(mappedConfig, null, 2));
+            ttsManager.updateConfig(mappedConfig);
+            logger.info('TTS 配置已更新');
+            res.json({ success: true, message: 'TTS 配置已保存' });
+        } catch (error) {
+            logger.error('更新 TTS 配置失败', error);
+            res.status(500).json({ success: false, error: error.message });
+        }
+    });
+
+    // 获取可用音色列表（需要认证）
+    app.get('/api/tts/voices', requireAuth, (req, res) => {
+        // 将对象格式转换为数组格式 [{id, name}]
+        const voiceList = Object.entries(VOICE_TYPES).map(([id, name]) => ({
+            id,
+            name
+        }));
+        res.json(voiceList);
+    });
+
+    // 测试 TTS 合成（需要认证）
+    app.post('/api/tts/test', requireAuth, async (req, res) => {
+        try {
+            const { text } = req.body;
+            if (!text) {
+                return res.status(400).json({ success: false, error: '请提供测试文本' });
+            }
+            
+            const audioPath = await ttsManager.synthesize(text);
+            // 提取文件名，生成可访问的 URL
+            const filename = path.basename(audioPath);
+            const audioUrl = `/audio/${filename}`;
+            
+            logger.info(`TTS 测试成功: ${audioPath}`);
+            res.json({ 
+                success: true, 
+                audioUrl,
+                filePath: audioPath,
+                message: '语音合成成功' 
+            });
+        } catch (error) {
+            logger.error('TTS 测试失败', error);
+            res.status(500).json({ success: false, error: error.message });
+        }
+    });
+
     // ==================== 系统信息 ====================
 
-    // 获取系统状态
-    app.get('/api/status', (req, res) => {
+    // 获取系统状态（需要认证）
+    app.get('/api/status', requireAuth, (req, res) => {
         res.json({
             version: '1.0.0',
             uptime: process.uptime(),
@@ -536,8 +666,8 @@ export function setupRoutes(app, deps) {
         });
     });
 
-    // OneBot 重连
-    app.post('/api/status/onebot/reconnect', (req, res) => {
+    // OneBot 重连（需要认证）
+    app.post('/api/status/onebot/reconnect', requireAuth, (req, res) => {
         if (bot) {
             bot.reconnect();
             res.json({ success: true, message: '正在重新连接...' });

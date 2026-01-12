@@ -16,12 +16,20 @@ export class SessionManager {
             this.sessions.set(sessionId, {
                 messages: [],
                 createdAt: Date.now(),
-                lastActive: Date.now()
+                lastActive: Date.now(),
+                // 粘性世界书条目：Map<entryKey, remainingTurns>
+                stickyEntries: new Map()
             });
         }
 
         const session = this.sessions.get(sessionId);
         session.lastActive = Date.now();
+        
+        // 兼容旧会话，确保有 stickyEntries
+        if (!session.stickyEntries) {
+            session.stickyEntries = new Map();
+        }
+        
         return session;
     }
 
@@ -43,6 +51,28 @@ export class SessionManager {
      */
     clearSession(sessionId) {
         this.sessions.delete(sessionId);
+    }
+
+    /**
+     * 获取会话历史消息
+     * @param {string} sessionId - 会话ID
+     * @param {number} limit - 最大返回条数
+     * @returns {Array} 历史消息数组
+     */
+    getHistory(sessionId, limit = 50) {
+        const session = this.getSession(sessionId);
+        const messages = session.messages || [];
+        return messages.slice(-limit);
+    }
+
+    /**
+     * 清除会话历史消息（但保留会话）
+     * @param {string} sessionId - 会话ID
+     */
+    clearHistory(sessionId) {
+        const session = this.getSession(sessionId);
+        session.messages = [];
+        session.stickyEntries = new Map();
     }
 
     /**
@@ -71,5 +101,41 @@ export class SessionManager {
                 this.sessions.delete(id);
             }
         }
+    }
+
+    /**
+     * 更新粘性世界书条目
+     * @param {string} sessionId - 会话ID
+     * @param {Array} triggeredEntries - 本轮触发的条目 [{key, sticky}, ...]
+     */
+    updateStickyEntries(sessionId, triggeredEntries) {
+        const session = this.getSession(sessionId);
+        
+        // 1. 所有现有粘性条目的剩余轮数减 1
+        for (const [key, remaining] of session.stickyEntries) {
+            if (remaining <= 1) {
+                session.stickyEntries.delete(key);
+            } else {
+                session.stickyEntries.set(key, remaining - 1);
+            }
+        }
+        
+        // 2. 添加/刷新本轮触发的条目
+        for (const entry of triggeredEntries) {
+            if (entry.sticky && entry.sticky > 0) {
+                // 如果条目有粘性设置，设置/刷新其剩余轮数
+                session.stickyEntries.set(entry.key, entry.sticky);
+            }
+        }
+    }
+
+    /**
+     * 获取当前会话的粘性条目键列表
+     * @param {string} sessionId - 会话ID
+     * @returns {Set<string>} 粘性条目的键集合
+     */
+    getStickyEntryKeys(sessionId) {
+        const session = this.getSession(sessionId);
+        return new Set(session.stickyEntries.keys());
     }
 }

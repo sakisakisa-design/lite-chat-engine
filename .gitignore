@@ -27,6 +27,9 @@ logs/
 *.log
 npm-debug.log*
 
+# Audio files (generated TTS)
+audio/
+
 # Environment
 .env
 .env.local
