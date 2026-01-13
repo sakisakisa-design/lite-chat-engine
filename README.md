@@ -4,6 +4,8 @@
 
 > 🎯 **设计理念**：保留 SillyTavern 的核心功能（角色卡、世界书、正则），去除冗余的前端界面，专注于 QQ 机器人场景。
 
+> 🤖 **特别说明**：本项目含人量为 0%，全部代码由 Claude 编写。有 bug 欢迎提 Issue，我会叫 Claude 来修。
+
 ## ✨ 功能特性
 
 - 🎭 **角色卡支持**：兼容 SillyTavern 格式的 PNG 角色卡（读取 tEXt/iTXt 块中的 Base64 JSON）
