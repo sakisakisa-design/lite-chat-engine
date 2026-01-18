@@ -321,8 +321,17 @@ server.listen(config.server.port, config.server.host, () => {
     // 自动加载默认角色
     if (config.chat.defaultCharacter) {
         try {
-            characterManager.loadCharacter(config.chat.defaultCharacter);
+            const character = characterManager.loadCharacter(config.chat.defaultCharacter);
             logger.info(`已加载默认角色: ${config.chat.defaultCharacter}`);
+            
+            // 自动加载对应的世界书（使用角色名而不是ID）
+            const charName = character.name || config.chat.defaultCharacter;
+            const worldBook = worldBookManager.readWorldBook(charName);
+            if (worldBook) {
+                worldBookManager.currentWorldBook = worldBook;
+                worldBookManager.currentWorldBookName = charName;
+                logger.info(`已自动加载世界书: ${charName}`);
+            }
         } catch (error) {
             logger.warn(`加载默认角色失败: ${error.message}`);
         }

@@ -139,6 +139,11 @@ export function setupRoutes(app, deps) {
             // 合并配置（保留未提供的字段）
             Object.assign(config, newConfig);
             
+            // 如果AI配置更新了，同步更新aiClient
+            if (newConfig.ai) {
+                aiClient.updateConfig(config.ai);
+            }
+            
             // 保存到文件
             saveConfig(config);
             
@@ -403,9 +408,13 @@ export function setupRoutes(app, deps) {
             const filePath = path.join(config.chat.dataDir || './data', 'worlds', filename);
             await fs.writeFile(filePath, JSON.stringify(worldbook, null, 2), 'utf-8');
             
+            // 清除缓存，强制重新加载
+            worldBookManager.clearCache();
+            
             // 如果当前加载的是这个世界书，重新加载
             const currentWorldBook = worldBookManager.getCurrentWorldBook();
-            if (currentWorldBook && currentWorldBook.filename === filename) {
+            const currentFilename = currentWorldBook ? currentWorldBook.name + '.json' : null;
+            if (currentFilename === filename) {
                 await worldBookManager.loadWorldBook(filename);
             }
             
