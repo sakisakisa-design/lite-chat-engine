@@ -2,10 +2,51 @@
  * 会话管理模块
  */
 
+import fs from 'fs';
+import path from 'path';
+
 export class SessionManager {
     constructor(maxHistoryLength = 50) {
         this.sessions = new Map();
         this.maxHistoryLength = maxHistoryLength;
+        this.cacheFile = path.join(process.cwd(), 'data', 'chats', 'sessions.json');
+        this.loadSessions();
+    }
+
+    loadSessions() {
+        try {
+            if (fs.existsSync(this.cacheFile)) {
+                const data = JSON.parse(fs.readFileSync(this.cacheFile, 'utf-8'));
+                this.sessions = new Map(data.map(([id, session]) => [
+                    id,
+                    {
+                        ...session,
+                        stickyEntries: new Map(session.stickyEntries || [])
+                    }
+                ]));
+            }
+        } catch (err) {
+            console.error('加载会话缓存失败:', err);
+        }
+    }
+
+    saveSessions() {
+        try {
+            const dir = path.dirname(this.cacheFile);
+            if (!fs.existsSync(dir)) {
+                fs.mkdirSync(dir, { recursive: true });
+            }
+            const data = Array.from(this.sessions.entries()).map(([id, session]) => [
+                id,
+                {
+                    ...session,
+                    stickyEntries: Array.from(session.stickyEntries.entries())
+                }
+            ]);
+            fs.writeFileSync(this.cacheFile, JSON.stringify(data, null, 2));
+        } catch (err) {
+            console.error('保存会话缓存失败:', err);
+        }
     }
 
     /**
@@ -44,6 +85,8 @@ export class SessionManager {
         if (session.messages.length > this.maxHistoryLength) {
             session.messages = session.messages.slice(-this.maxHistoryLength);
         }
+        
+        this.saveSessions();
     }
 
     /**
@@ -51,6 +94,7 @@ export class SessionManager {
      */
     clearSession(sessionId) {
         this.sessions.delete(sessionId);
+        this.saveSessions();
     }
 
     /**
@@ -73,6 +117,7 @@ export class SessionManager {
         const session = this.getSession(sessionId);
         session.messages = [];
         session.stickyEntries = new Map();
+        this.saveSessions();
     }
 
     /**
@@ -127,6 +172,8 @@ export class SessionManager {
                 session.stickyEntries.set(entry.key, entry.sticky);
             }
         }
+        
+        this.saveSessions();
     }
 
     /**

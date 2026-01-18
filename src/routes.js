@@ -442,8 +442,8 @@ export function setupRoutes(app, deps) {
             // 获取角色名称（可能在顶层或 data 对象内）
             const charName = character.name || character.data?.name || characterName;
             
-            // 生成世界书文件名
-            const worldbookFilename = `${charName}_worldbook.json`;
+            // 生成世界书文件名（使用 Lorebook 格式）
+            const worldbookFilename = `${charName}'s Lorebook.json`;
             const worldbookPath = path.join(config.chat.dataDir || './data', 'worlds', worldbookFilename);
             
             // 转换为标准世界书格式

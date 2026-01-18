@@ -20,8 +20,11 @@ export class PromptBuilder {
         // 读取角色数据
         const character = this.characterManager.readFromPng(characterName);
         
-        // 读取世界书
-        const worldBook = this.worldBookManager.readWorldBook(characterName);
+        // 读取世界书：优先使用已选择的世界书，否则根据角色名查找
+        let worldBook = this.worldBookManager.currentWorldBook;
+        if (!worldBook) {
+            worldBook = this.worldBookManager.readWorldBook(characterName);
+        }
         
         // 用于世界书匹配的文本：历史消息 + 当前消息
         const allText = historyMessages.map(m => m.content).join(' ') + ' ' + userMessage;

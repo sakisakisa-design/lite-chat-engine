@@ -1077,15 +1077,18 @@
                 }
                 
                 // API 返回的是文件名数组（字符串）
-                list.innerHTML = worldbooks.map(filename => `
-                    <div class="list-item" onclick="selectWorldBook('${filename}')">
+                list.innerHTML = worldbooks.map((filename, index) => `
+                    <div class="list-item" onclick="selectWorldBook(worldbookFilenames[${index}])">
                         <div>
-                            <div class="name">${filename.replace('.json', '')}</div>
-                            <div class="meta">${filename}</div>
+                            <div class="name">${escapeHtml(filename.replace('.json', ''))}</div>
+                            <div class="meta">${escapeHtml(filename)}</div>
                         </div>
-                        <button class="danger" onclick="event.stopPropagation(); deleteWorldBook('${filename}')" style="padding: 5px 10px;">删除</button>
+                        <button class="danger" onclick="event.stopPropagation(); deleteWorldBook(worldbookFilenames[${index}])" style="padding: 5px 10px;">删除</button>
                     </div>
                 `).join('');
+                
+                // 保存文件名列表供点击事件使用
+                window.worldbookFilenames = worldbooks;
             } catch (e) {
                 console.error('加载世界书列表失败', e);
             }
@@ -1098,12 +1101,14 @@
 
         async function selectWorldBook(filename) {
             try {
+                console.log('选择世界书:', filename);
                 const res = await fetch('/api/worldbooks/select', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ filename })
                 });
                 const data = await res.json();
+                console.log('选择结果:', data);
                 
                 if (data.success) {
                     showToast('世界书已加载');
@@ -1114,14 +1119,17 @@
                     await loadWorldBookContent(filename);
                 }
             } catch (e) {
+                console.error('选择世界书失败:', e);
                 showToast('加载世界书失败', true);
             }
         }
 
         async function loadWorldBookContent(filename) {
             try {
+                console.log('加载世界书内容:', filename);
                 const res = await fetch(`/api/worldbooks/${encodeURIComponent(filename)}/content`);
                 const data = await res.json();
+                console.log('世界书数据:', data);
                 
                 if (data.success) {
                     currentWorldBookData = data.worldbook;
